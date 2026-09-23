@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Logo do mostruário Assistência Simplificada</title>
+  <desc id="desc">Símbolo azul e amarelo em forma de A</desc>
+  <defs>
+    <linearGradient id="blue" x1="20" y1="12" x2="104" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#30c7dc"/>
+      <stop offset="1" stop-color="#176bb5"/>
+    </linearGradient>
+    <linearGradient id="yellow" x1="66" y1="30" x2="110" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5d400"/>
+      <stop offset="1" stop-color="#e1a900"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#f5f8fb"/>
+  <path fill="url(#blue)" d="M57 15 15 108h24l12-28 9-20 9 20 12 28h25L64 15z"/>
+  <path fill="url(#yellow)" d="m73 66 16 42h24L91 56z"/>
+  <path fill="#f5f8fb" d="m56 60 9 20h-18z"/>
+</svg>

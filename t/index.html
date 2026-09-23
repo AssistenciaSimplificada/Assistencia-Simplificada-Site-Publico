@@ -1,0 +1,106 @@
+<!-- ROTA CURTA GERADA por tools/sync-public-config.mjs. -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="description" content="Avaliação técnica protegida e temporária da Assistência Simplificada.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src https://nbyezzdvxjcmlcejiiak.supabase.co; img-src 'self'; style-src 'self'; script-src 'self'">
+  <title>Avaliação técnica | Assistência Simplificada</title>
+  <link rel="canonical" href="https://assistenciasimplificada.site/t/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/tecnico/page.css?v=10.0.0-20260923">
+  <link rel="stylesheet" href="/portal-design.css?v=10.0.0-20260923">
+  <script src="/portal-theme.js?v=10.0.0-20260923"></script>
+  <script src="/tecnico/config.js" defer></script>
+  <script src="/tecnico/page.js?v=10.0.0-20260923" defer></script>
+</head>
+<body class="technician-portal">
+  <main>
+    <header>
+      <p class="eyebrow">ASSISTÊNCIA SIMPLIFICADA</p>
+      <h1>Avaliação técnica</h1>
+      <p class="muted">Acesso protegido e temporário. O envio ficará aguardando conferência da assistência.</p>
+    </header>
+    <section id="loading" class="card notice" role="status">Carregando atendimento…</section>
+    <section id="error" class="card notice error" hidden>
+      <h2>Não foi possível abrir</h2>
+      <p id="error-text">Este link expirou ou já foi utilizado.</p>
+      <button id="retry" type="button" hidden>Tentar novamente</button>
+    </section>
+    <form id="pin-form" class="card pin-gate" hidden novalidate>
+      <span class="pin-icon" aria-hidden="true">⌨</span>
+      <div>
+        <h2>Este atendimento exige senha</h2>
+        <p class="muted">Digite os números informados pela assistência. A senha não faz parte do endereço.</p>
+      </div>
+      <label for="pin">Senha do link</label>
+      <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="12" autocomplete="one-time-code" required placeholder="4 a 12 dígitos">
+      <p id="pin-error" class="field-error" role="alert" hidden></p>
+      <button id="pin-submit" type="submit">Abrir atendimento</button>
+    </form>
+    <form id="form" hidden novalidate>
+      <div class="technician-side-column">
+      <section class="card facts">
+        <h2>1. Confira o atendimento</h2>
+        <div><span>Assistência</span><strong id="store"></strong></div>
+        <div><span>Atendimento</span><strong id="number"></strong></div>
+        <div><span>Aparelho</span><strong id="device"></strong></div>
+        <div><span>Relato recebido</span><strong id="reported"></strong></div>
+        <small id="expiry"></small>
+      </section>
+      <section class="card device-guide">
+        <details><summary>Orientações para a avaliação</summary>
+        <h2>Conferência rápida do aparelho</h2>
+        <ul>
+          <li>Confirme se o modelo, a situação física e os acessórios conferem com o que foi recebido.</li>
+          <li>Se o aparelho ligar, confira o IMEI no discador com <strong>*#06#</strong> e registre somente o necessário na resposta.</li>
+          <li>Descreva testes realizados, defeito constatado e qualquer ressalva que possa afetar o reparo.</li>
+        </ul>
+        <p class="muted">Essas orientações são apenas para a avaliação. A assistência revisará a resposta antes de alterar o orçamento.</p>
+        </details>
+      </section>
+      </div>
+      <div class="technician-work-column">
+      <section class="card evaluation-overview" aria-labelledby="evaluation-progress-title">
+        <div class="evaluation-overview-head">
+          <div><span class="panel-kicker">PAINEL DA AVALIAÇÃO</span><h2 id="evaluation-progress-title">Progresso do preenchimento</h2></div>
+          <strong id="completion-percent">0%</strong>
+        </div>
+        <progress id="completion-chart" max="100" value="0">0%</progress>
+        <div class="evaluation-metrics">
+          <div><span>Serviços</span><strong id="services-count">0</strong></div>
+          <div><span>Concluídos</span><strong id="services-complete">0</strong></div>
+          <div><span>Pendentes</span><strong id="services-pending">0</strong></div>
+        </div>
+        <p id="completion-message" class="muted">Preencha os valores ou informe por que o serviço não pode prosseguir.</p>
+      </section>
+      <section class="card service-values-card">
+        <div class="section-heading">
+          <div>
+            <h2>2. Conclusão e valores de cada serviço</h2>
+            <p class="muted">Informe se o reparo usa peça, somente mão de obra ou se não pode ser realizado. Se a mesma peça tiver opções diferentes, cadastre cada opção com seu valor.</p>
+          </div>
+          <small>RESPOSTA OBRIGATÓRIA</small>
+        </div>
+        <div id="services"></div>
+      </section>
+      <section class="card">
+        <h2>3. Conclua a avaliação</h2>
+        <label for="diagnosis">Defeito constatado pelo técnico</label>
+        <textarea id="diagnosis" maxlength="2000" placeholder="Opcional. Descreva alguma diferença encontrada nos testes."></textarea>
+        <small>Se ficar em branco, será registrado que o defeito relatado foi constatado.</small>
+      </section>
+      <button id="submit" type="submit">Enviar para conferência</button>
+      <p class="muted submission-note">O envio não aprova nem altera o orçamento. A assistência precisa conferir sua resposta.</p>
+      </div>
+    </form>
+    <section id="success" class="card notice success" hidden>
+      <h2>Valores enviados</h2>
+      <p>A assistência recebeu sua avaliação. O orçamento ainda não foi alterado e ficará aguardando conferência no computador principal.</p>
+    </section>
+  </main>
+</body>
+</html>

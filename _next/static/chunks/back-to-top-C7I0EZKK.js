@@ -1,0 +1,1 @@
+import{r as e}from"./framework-DTZGTDtF.js";var t=e();function n(){return(0,t.jsx)(`button`,{type:`button`,className:`back-to-top`,"aria-label":`Voltar ao topo`,onClick:()=>window.scrollTo({top:0,behavior:`smooth`}),children:(0,t.jsx)(`i`,{className:`bi bi-arrow-up`})})}export{n as BackToTop};

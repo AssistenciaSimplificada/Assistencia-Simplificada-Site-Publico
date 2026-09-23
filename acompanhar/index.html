@@ -1,0 +1,194 @@
+<!-- ARQUIVO GERADO por tools/sync-public-config.mjs. -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; base-uri 'none'; form-action 'self'">
+  <title>Acompanhar atendimento | Assistência Simplificada</title>
+  <link rel="canonical" href="https://assistenciasimplificada.site/a/">
+  <link rel="stylesheet" href="/acompanhar/page.css?v=10.0.0-20260923">
+  <link rel="stylesheet" href="/portal-design.css?v=10.0.0-20260923">
+  <script src="/portal-theme.js?v=10.0.0-20260923"></script>
+  <script src="/acompanhar/config.js" defer></script>
+  <script src="/acompanhar/page.js?v=10.0.0-20260923" defer></script>
+</head>
+<body class="customer-portal">
+  <main class="shell">
+    <header class="brand">
+      <img id="store-logo" class="brand-logo" alt="" hidden>
+      <div><strong id="store-name">Acompanhe seu atendimento</strong><small>Acompanhamento seguro</small></div>
+    </header>
+
+    <section id="loading" class="state-card" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <h1>Consultando seu atendimento…</h1>
+      <p>Isso leva apenas alguns segundos.</p>
+    </section>
+
+    <form id="pin-form" class="state-card" hidden>
+      <span class="state-icon">••••</span>
+      <h1>Confirme seu telefone</h1>
+      <p>Digite os 4 últimos números do telefone informado à assistência.</p>
+      <label for="pin">Últimos 4 números</label>
+      <input id="pin" name="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required>
+      <p id="pin-error" class="error-text" role="alert" hidden></p>
+      <button id="pin-submit" type="submit">Ver acompanhamento</button>
+    </form>
+
+    <section id="error" class="state-card" hidden>
+      <span class="state-icon danger">!</span>
+      <h1>Não foi possível abrir</h1>
+      <p id="error-text"></p>
+      <button id="retry" type="button" hidden>Tentar novamente</button>
+      <small id="error-help">Fale com a assistência se precisar de ajuda.</small>
+    </section>
+
+    <article id="tracking" class="tracking" hidden>
+      <header class="tracking-head">
+        <div><small>ATENDIMENTO</small><h1 id="number"></h1></div>
+        <span id="status" class="status-pill"></span>
+      </header>
+
+      <section id="pickup-notice" class="detail-card pickup-notice" hidden aria-labelledby="pickup-title">
+        <h2 id="pickup-title">Aparelho retirado</h2>
+        <p id="pickup-date"></p>
+        <p>Este link expira 3 dias (72 horas) após a retirada do aparelho.</p>
+        <p id="pickup-expiry"></p>
+        <p>Guarde o PDF enviado pela loja: todas as informações importantes do atendimento, incluindo as condições e a validade da garantia quando aplicável, estão nesse documento. Se não o recebeu, solicite uma cópia à loja.</p>
+      </section>
+
+      <section class="hero-card">
+        <div class="hero-copy">
+          <small>STATUS ATUAL</small>
+          <h2 id="status-detail"></h2>
+          <p id="status-help"></p>
+          <span id="updated"></span>
+          <p id="next-step" class="next-step"></p>
+        </div>
+        <div id="photo-wrap" hidden>
+          <div id="photo-gallery" class="tracking-photo-gallery" aria-label="Fotos do aparelho"></div>
+        </div>
+      </section>
+
+      <section id="revision-card" class="detail-card revision-card" hidden aria-labelledby="revision-title">
+        <div class="section-heading"><div><small>REVISÃO DE VALORES</small><h2 id="revision-title">Este orçamento substitui uma proposta anterior</h2></div></div>
+        <p id="revision-reason"></p>
+        <div class="revision-values" aria-label="Comparação de valores">
+          <div><small>VALOR ANTERIOR</small><strong id="revision-original-total">—</strong></div>
+          <div><small>NOVO VALOR</small><strong id="revision-new-total">—</strong></div>
+          <div><small>DIFERENÇA</small><strong id="revision-difference">—</strong></div>
+        </div>
+        <p class="revision-warning">A nova proposta só deve seguir após uma nova aprovação.</p>
+      </section>
+
+      <section id="approval-card" class="detail-card approval-card" hidden aria-labelledby="approval-title">
+        <div class="section-heading"><div><small>CONFIRMAÇÃO DO ORÇAMENTO</small><h2 id="approval-title">Você aprova este serviço?</h2></div></div>
+        <div class="approval-summary" aria-live="polite">
+          <span>Valor total do orçamento</span>
+          <strong id="approval-total">—</strong>
+          <small id="approval-service-summary"></small>
+        </div>
+        <p id="approval-intro">Confira o valor e os serviços. Depois, marque a confirmação e escolha uma das opções abaixo.</p>
+        <p id="approval-labor-notice" class="labor-condition" hidden></p>
+        <label class="approval-confirm-row"><input id="approval-check" type="checkbox"> <span>Entendi o valor e os serviços deste orçamento.</span></label>
+        <section id="approval-signature" class="approval-signature" hidden aria-labelledby="approval-signature-title">
+          <div class="approval-signature-heading"><strong id="approval-signature-title">Assinatura do cliente</strong><small id="approval-signature-guidance">Assine com o dedo dentro do quadro.</small></div>
+          <p class="orientation-tip">Para assinar com mais espaço, use o celular na horizontal.</p>
+          <canvas id="approval-signature-canvas" width="1200" height="520" aria-label="Quadro para assinatura"></canvas>
+          <div class="approval-signature-actions">
+            <button id="cancel-approval-signature" type="button">Voltar</button>
+            <button id="clear-approval-signature" type="button">Limpar assinatura</button>
+            <button id="confirm-approval-signature" type="button" class="approval-primary">Confirmar assinatura e aprovar</button>
+          </div>
+        </section>
+        <p id="approval-feedback" class="approval-feedback" role="status" hidden></p>
+        <div id="rejection-choice" class="rejection-choice" hidden>
+          <label for="rejection-reason">Por que você não deseja aprovar?</label>
+          <select id="rejection-reason">
+            <option value="Cliente não aprovou o serviço">Prefiro não realizar o serviço</option>
+            <option value="Valor acima do esperado">O valor ficou acima do esperado</option>
+            <option value="Prazo não atende à necessidade do cliente">O prazo não atende minha necessidade</option>
+            <option value="Cliente desistiu do atendimento">Desisti do atendimento</option>
+          </select>
+          <div><button id="cancel-rejection" type="button">Voltar</button><button id="confirm-rejection" type="button">Confirmar que não aprovo</button></div>
+        </div>
+        <div class="approval-actions">
+          <button id="approve-quote" type="button" class="approval-primary">Sim, aprovar serviço</button>
+          <button id="reject-quote" type="button" class="approval-secondary">Não quero aprovar</button>
+        </div>
+        <small class="approval-footnote">Sua confirmação será registrada com data e hora para a assistência. Ela não substitui uma assinatura física quando esta for necessária.</small>
+      </section>
+
+      <section class="progress-card" aria-labelledby="progress-title">
+        <div class="section-heading"><div><small>ANDAMENTO</small><h2 id="progress-title">Etapas do atendimento</h2></div><span id="progress-count" role="status"></span></div>
+        <div class="progress-overview" aria-hidden="true">
+          <div id="progress-meter" class="progress-meter progress-0"><strong id="progress-percent">0%</strong><span>concluído</span></div>
+          <div class="progress-copy"><small>FASE ATUAL</small><strong id="progress-summary">Consultando atendimento</strong><span>Acompanhe abaixo cada etapa registrada pela assistência.</span></div>
+        </div>
+        <ol id="progress" class="progress-list"></ol>
+      </section>
+
+      <div class="info-grid">
+        <section class="info-card"><small>APARELHO</small><strong id="device"></strong><p id="reported"></p></section>
+        <section class="info-card"><small>PRAZO INFORMADO</small><strong id="deadline"></strong></section>
+        <section id="maintenance-card" class="info-card" hidden><small>TEMPO EM MANUTENÇÃO</small><strong id="maintenance-time"></strong><p id="maintenance-note"></p></section>
+        <section id="total-card" class="info-card" hidden><small>VALOR REGISTRADO</small><strong id="total"></strong></section>
+      </div>
+
+      <section id="device-details-card" class="detail-card device-details-card" hidden>
+        <div class="section-heading"><div><small>IDENTIFICAÇÃO E CONFERÊNCIA</small><h2>Informações do aparelho</h2></div><span>Dados publicados pela loja</span></div>
+        <div class="device-details-grid">
+          <div id="device-physical-detail"><small>SITUAÇÃO FÍSICA</small><strong id="device-physical-status"></strong></div>
+          <div id="device-capacity-detail" hidden><small>CAPACIDADE</small><strong id="device-capacity"></strong></div>
+          <div id="device-imei-detail" hidden><small>IMEI</small><strong id="device-imei"></strong></div>
+          <div id="device-serial-detail" hidden><small>NÚMERO DE SÉRIE</small><strong id="device-serial"></strong></div>
+          <div id="device-received-detail" hidden><small>ENTRADA REGISTRADA</small><strong id="device-received"></strong></div>
+        </div>
+        <p id="device-accessories" class="device-details-note" hidden></p>
+        <p id="device-visual-notes" class="device-details-note" hidden></p>
+      </section>
+
+      <section id="diagnosis-card" class="detail-card" hidden><small>AVALIAÇÃO TÉCNICA</small><p id="diagnosis"></p></section>
+      <section id="services-card" class="detail-card" hidden><small>SERVIÇOS DO ATENDIMENTO</small><ul id="services"></ul></section>
+      <section id="labor-notice-card" class="detail-card" hidden><small>CONDIÇÃO DA MÃO DE OBRA</small><p id="labor-notice-text" class="labor-condition"></p></section>
+      <section id="timeline-card" class="detail-card" hidden><small>ATUALIZAÇÕES</small><div id="timeline" class="timeline"></div></section>
+
+      <footer>
+        <button id="refresh" type="button">Atualizar agora</button>
+        <p>As informações são publicadas pela assistência. Em caso de dúvida, fale diretamente com a loja.</p>
+      </footer>
+    </article>
+  </main>
+  <dialog id="evaluation-dialog" aria-labelledby="evaluation-title">
+    <form method="dialog" id="evaluation-form" class="evaluation-form">
+      <small>ANTES DE CONTINUAR</small><h2 id="evaluation-title">Como foi seu atendimento?</h2>
+      <p>Responda rapidamente para liberar o acompanhamento. A resposta é enviada com segurança à assistência e fica registrada somente no aplicativo da loja.</p>
+      <div class="evaluation-choices" role="group" aria-label="Avaliação do atendimento">
+        <label><input type="checkbox" name="good" value="Fui bem atendido"> Fui bem atendido</label>
+        <label><input type="checkbox" name="fast" value="Serviço foi rápido"> Serviço foi rápido</label>
+        <label><input type="checkbox" name="clear" value="Recebi explicações claras"> Recebi explicações claras</label>
+      </div>
+      <fieldset class="evaluation-stars" aria-labelledby="evaluation-stars-label">
+        <legend id="evaluation-stars-label">Nota geral</legend>
+        <div role="radiogroup" aria-label="Escolha de uma a cinco estrelas">
+          <input id="evaluation-star-1" type="radio" name="stars" value="1" required><label for="evaluation-star-1" aria-label="1 estrela">★</label>
+          <input id="evaluation-star-2" type="radio" name="stars" value="2"><label for="evaluation-star-2" aria-label="2 estrelas">★</label>
+          <input id="evaluation-star-3" type="radio" name="stars" value="3"><label for="evaluation-star-3" aria-label="3 estrelas">★</label>
+          <input id="evaluation-star-4" type="radio" name="stars" value="4"><label for="evaluation-star-4" aria-label="4 estrelas">★</label>
+          <input id="evaluation-star-5" type="radio" name="stars" value="5"><label for="evaluation-star-5" aria-label="5 estrelas">★</label>
+        </div>
+      </fieldset>
+      <p id="evaluation-error" class="evaluation-error" role="alert" hidden></p>
+      <button id="evaluation-submit" type="submit">Enviar avaliação e abrir atendimento</button>
+    </form>
+  </dialog>
+  <dialog id="photo-dialog" aria-labelledby="photo-title">
+    <header><h2 id="photo-title">Foto do aparelho</h2><button id="close-photo" type="button">Fechar</button></header>
+    <img id="photo-large" alt="">
+    <p id="photo-caption"></p>
+  </dialog>
+</body>
+</html>

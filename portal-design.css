@@ -1,0 +1,655 @@
+/* Portais públicos: linguagem visual empresarial, compacta e sem dependências externas. */
+:root,
+[data-portal-theme="light"] {
+  color-scheme: light;
+  --portal-bg: #eef1f4;
+  --portal-surface: #ffffff;
+  --portal-surface-2: #f7f8fa;
+  --portal-surface-3: #e8edf2;
+  --portal-text: #17202b;
+  --portal-muted: #5c6875;
+  --portal-line: #cfd6de;
+  --portal-line-strong: #aeb8c3;
+  --portal-accent: #b78c00;
+  --portal-accent-strong: #806200;
+  --portal-accent-soft: #fff4c2;
+  --portal-success: #16744a;
+  --portal-danger: #b4233c;
+  --portal-danger-soft: #fff0f2;
+  --portal-shadow: 0 8px 24px rgba(24, 35, 48, 0.07);
+  --bg: var(--portal-bg);
+  --panel: var(--portal-surface);
+  --surface: var(--portal-surface);
+  --surface2: var(--portal-surface-2);
+  --text: var(--portal-text);
+  --muted: var(--portal-muted);
+  --line: var(--portal-line);
+  --brand: var(--portal-accent);
+  --yellow: var(--portal-accent);
+  --green: var(--portal-success);
+  --ok: var(--portal-success);
+  --red: var(--portal-danger);
+  --danger: var(--portal-danger);
+}
+
+[data-portal-theme="dark"] {
+  color-scheme: dark;
+  --portal-bg: #0b1118;
+  --portal-surface: #121b25;
+  --portal-surface-2: #17222e;
+  --portal-surface-3: #22303d;
+  --portal-text: #f1f4f7;
+  --portal-muted: #a4afba;
+  --portal-line: #2d3a47;
+  --portal-line-strong: #455464;
+  --portal-accent: #f0c400;
+  --portal-accent-strong: #ffe166;
+  --portal-accent-soft: #342e12;
+  --portal-success: #53c98c;
+  --portal-danger: #ff8295;
+  --portal-danger-soft: #351d24;
+  --portal-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--portal-bg); touch-action: manipulation; }
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--portal-bg) !important;
+  color: var(--portal-text);
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+h1, h2, h3, strong, button, input, textarea, select { font-family: inherit; }
+h1, h2, h3 {
+  color: var(--portal-text);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+p, small, .muted { color: var(--portal-muted); }
+button, input, textarea, select { border-radius: 4px !important; }
+button { min-height: 44px; box-shadow: none !important; }
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--portal-accent) 48%, transparent) !important;
+  outline-offset: 2px;
+}
+
+.portal-toolbar {
+  border-bottom: 1px solid var(--portal-line);
+  background: var(--portal-surface);
+}
+.portal-toolbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1180px, calc(100% - 40px));
+  min-height: 48px;
+  margin: 0 auto;
+}
+.portal-security-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--portal-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.portal-security-label::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--portal-success);
+  content: "";
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-success) 14%, transparent);
+}
+.portal-theme-choices {
+  display: flex;
+  border: 1px solid var(--portal-line);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--portal-surface-2);
+}
+.portal-theme-choices button {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 0;
+  border-left: 1px solid var(--portal-line);
+  border-radius: 0 !important;
+  background: transparent;
+  color: var(--portal-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.portal-theme-choices button:first-child { border-left: 0; }
+.portal-theme-choices button[aria-pressed="true"] {
+  background: var(--portal-text);
+  color: var(--portal-surface);
+}
+
+.card,
+.state-card,
+.hero-card,
+.detail-card,
+.info-card,
+.progress-card,
+.login,
+.editor,
+.sidebar {
+  border: 1px solid var(--portal-line) !important;
+  border-radius: 6px !important;
+  background: var(--portal-surface) !important;
+  color: var(--portal-text);
+  box-shadow: var(--portal-shadow) !important;
+}
+.section-heading > small,
+.section-heading > span,
+.panel-kicker,
+.eyebrow {
+  color: var(--portal-accent-strong) !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.09em !important;
+}
+input, textarea, select, .state-card input {
+  border: 1px solid var(--portal-line-strong) !important;
+  background: var(--portal-surface) !important;
+  color: var(--portal-text) !important;
+}
+input:disabled, textarea:disabled, select:disabled {
+  background: var(--portal-surface-2) !important;
+  color: var(--portal-muted) !important;
+  opacity: 1;
+}
+
+/* Portal do cliente */
+.customer-portal .shell {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+.customer-portal .brand {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  margin: 0 0 22px;
+  padding: 0 4px 20px;
+  border-bottom: 2px solid var(--portal-text);
+}
+.customer-portal .brand::after {
+  margin-left: auto;
+  color: var(--portal-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  content: "PORTAL DO CLIENTE";
+}
+.customer-portal .brand-logo { border-radius: 4px; }
+.customer-portal .brand strong { color: var(--portal-text); font-size: 18px; font-weight: 680; }
+.customer-portal .brand small { margin-top: 2px; font-size: 12px; }
+.customer-portal .tracking {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  gap: 16px;
+  align-items: start;
+}
+.customer-portal .tracking-head {
+  grid-column: 1 / -1;
+  min-height: 58px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid var(--portal-line);
+}
+.customer-portal .tracking-head small {
+  color: var(--portal-text);
+  font-size: 15px;
+  font-weight: 650;
+}
+.customer-portal .tracking-head #number {
+  margin-top: 3px;
+  color: var(--portal-muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.customer-portal .status-pill {
+  border: 1px solid color-mix(in srgb, var(--portal-accent) 55%, var(--portal-line));
+  border-radius: 3px;
+  background: var(--portal-accent-soft);
+  color: var(--portal-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.customer-portal .hero-card {
+  grid-column: 1 / 9;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 260px;
+  padding: 28px;
+  border-top: 4px solid var(--portal-accent) !important;
+}
+.customer-portal .hero-copy > small { color: var(--portal-accent-strong); font-weight: 750; letter-spacing: 0.1em; }
+.customer-portal .hero-copy h2 { max-width: 680px; margin: 10px 0 8px; font-size: clamp(24px, 3.5vw, 38px); }
+.customer-portal .hero-copy #status-help { max-width: 680px; font-size: 16px; }
+.customer-portal .hero-copy #updated { color: var(--portal-muted); font-size: 12px; }
+.customer-portal .next-step {
+  margin-top: 22px;
+  padding: 14px 16px;
+  border: 0;
+  border-left: 4px solid var(--portal-accent);
+  border-radius: 0;
+  background: var(--portal-surface-2);
+  color: var(--portal-text);
+  font-weight: 600;
+}
+.customer-portal .progress-card {
+  grid-column: 9 / -1;
+  grid-row: 2 / span 2;
+  padding: 22px;
+}
+.progress-overview {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  margin: 18px 0 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--portal-line);
+}
+.progress-meter {
+  --progress-angle: 0deg;
+  display: grid;
+  place-content: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--portal-surface) 57%, transparent 58%), conic-gradient(var(--portal-accent) var(--progress-angle), var(--portal-surface-3) 0);
+  text-align: center;
+}
+.progress-meter.progress-20 { --progress-angle: 72deg; }
+.progress-meter.progress-40 { --progress-angle: 144deg; }
+.progress-meter.progress-60 { --progress-angle: 216deg; }
+.progress-meter.progress-80 { --progress-angle: 288deg; }
+.progress-meter.progress-100 { --progress-angle: 360deg; }
+.progress-meter strong { color: var(--portal-text); font-size: 20px; line-height: 1; }
+.progress-meter span { margin-top: 4px; color: var(--portal-muted); font-size: 10px; text-transform: uppercase; }
+.progress-copy { display: grid; gap: 3px; }
+.progress-copy small { color: var(--portal-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; }
+.progress-copy strong { color: var(--portal-text); font-size: 16px; }
+.progress-copy span { color: var(--portal-muted); font-size: 12px; line-height: 1.35; }
+.customer-portal .progress-list { display: grid; grid-template-columns: 1fr; gap: 0; padding: 0; }
+.customer-portal .progress-list li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  min-height: 46px;
+  gap: 11px;
+  border-bottom: 1px solid var(--portal-line);
+  color: var(--portal-muted);
+  font-size: 13px;
+  text-align: left;
+}
+.customer-portal .progress-list li:last-child { border-bottom: 0; }
+.customer-portal .progress-list li::after { display: none; }
+.customer-portal .progress-list li i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--portal-line-strong);
+  border-radius: 3px;
+  background: var(--portal-surface-2);
+  color: var(--portal-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+.customer-portal .progress-list li.current,
+.customer-portal .progress-list li.done { color: var(--portal-text); font-weight: 650; }
+.customer-portal .progress-list li.current i {
+  border-color: var(--portal-accent);
+  background: var(--portal-accent);
+  color: #161300;
+  box-shadow: 0 0 0 4px var(--portal-accent-soft);
+}
+.customer-portal .progress-list li.done i {
+  border-color: var(--portal-success);
+  background: var(--portal-success);
+  color: #07170f;
+}
+.customer-portal .info-grid {
+  grid-column: 1 / 9;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.customer-portal .info-card { min-height: 112px; padding: 18px 20px; box-shadow: none !important; }
+.customer-portal .info-card small { color: var(--portal-muted); font-size: 10px; font-weight: 750; letter-spacing: 0.08em; }
+.customer-portal .info-card strong { margin-top: 8px; color: var(--portal-text); font-size: 17px; }
+.customer-portal .info-card p { margin-top: 6px; font-size: 12px; }
+.customer-portal #approval-card,
+.customer-portal #revision-card,
+.customer-portal #pickup-notice,
+.customer-portal #services-card { grid-column: 1 / 9; }
+.customer-portal #device-details-card,
+.customer-portal #diagnosis-card,
+.customer-portal #timeline-card { grid-column: 9 / -1; }
+.customer-portal .detail-card { padding: 22px; box-shadow: none !important; }
+.customer-portal .detail-card p { color: var(--portal-muted); }
+.customer-portal .pickup-notice p { color: var(--portal-text); font-size: 15px; line-height: 1.6; }
+.customer-portal .pickup-notice #pickup-expiry { color: var(--portal-accent-strong); }
+.customer-portal .detail-card li,
+.customer-portal .device-details-grid > div,
+.customer-portal .device-details-note {
+  border-radius: 3px;
+  background: var(--portal-surface-2);
+  color: var(--portal-text);
+}
+.customer-portal .approval-card { border-top: 4px solid var(--portal-accent) !important; }
+.customer-portal .approval-card.is-resolved { border-top-color: var(--portal-success) !important; }
+.customer-portal .approval-card.is-resolved .approval-feedback {
+  margin: 16px 0 0;
+  padding: 15px 16px;
+  border: 1px solid color-mix(in srgb, var(--portal-success) 45%, var(--portal-line));
+  border-left: 4px solid var(--portal-success);
+  background: color-mix(in srgb, var(--portal-success) 10%, var(--portal-surface));
+  color: var(--portal-text);
+  font-weight: 650;
+}
+.customer-portal .approval-summary { border: 1px solid var(--portal-line); border-radius: 4px; background: var(--portal-surface-2); }
+.customer-portal .approval-summary strong { color: var(--portal-text); }
+.customer-portal .approval-confirm-row { border-color: var(--portal-line); border-radius: 4px; background: var(--portal-surface); color: var(--portal-text); }
+.customer-portal .approval-confirm-row input { width: 22px; height: 22px; accent-color: var(--portal-accent); }
+.customer-portal .approval-signature { border-color: var(--portal-line); border-radius: 4px; background: var(--portal-surface-2); }
+.customer-portal .approval-signature button { border-color: var(--portal-line-strong); border-radius: 3px; background: var(--portal-surface); color: var(--portal-text); }
+.customer-portal .approval-actions button,
+.customer-portal #refresh,
+.customer-portal #retry,
+.customer-portal #pin-submit { border: 1px solid var(--portal-text); font-weight: 650; }
+.customer-portal .approval-primary,
+.customer-portal #approve-quote,
+.customer-portal #pin-submit { background: var(--portal-accent); color: #171300; border-color: var(--portal-accent); }
+.customer-portal .approval-secondary,
+.customer-portal #reject-quote,
+.customer-portal #refresh,
+.customer-portal #retry { background: var(--portal-surface); color: var(--portal-text); }
+.customer-portal .approval-feedback.error,
+.customer-portal .error-text { color: var(--portal-danger); }
+.customer-portal .timeline-item { border-color: var(--portal-line); }
+.customer-portal .timeline-dot { background: var(--portal-accent); box-shadow: 0 0 0 3px var(--portal-accent-soft); }
+.customer-portal .tracking > footer { grid-column: 1 / -1; margin-top: 10px; border-top: 1px solid var(--portal-line); }
+.customer-portal .state-card { max-width: 520px; padding: 38px; }
+.customer-portal .state-icon { border-radius: 4px; }
+.customer-portal #photo-dialog { border: 1px solid var(--portal-line); border-radius: 6px; background: var(--portal-surface); color: var(--portal-text); }
+
+/* Portal do técnico */
+.technician-portal main {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 30px 0 64px;
+}
+.technician-portal main > header {
+  margin: 0 0 24px;
+  padding: 0 4px 20px;
+  border-bottom: 2px solid var(--portal-text);
+}
+.technician-portal main > header h1 { margin: 5px 0 4px; font-size: clamp(28px, 4vw, 40px); }
+.technician-portal main > header p:last-child { max-width: 740px; margin: 0; font-size: 14px; }
+.technician-portal #form {
+  display: grid;
+  grid-template-columns: minmax(280px, 4fr) minmax(0, 8fr);
+  gap: 16px;
+  align-items: start;
+}
+.technician-portal .technician-side-column,
+.technician-portal .technician-work-column { display: grid; min-width: 0; gap: 16px; align-content: start; }
+.technician-portal .technician-side-column > *,
+.technician-portal .technician-work-column > * { grid-column: auto !important; grid-row: auto !important; width: 100%; min-width: 0; }
+.technician-portal #form .card { margin: 0; padding: 22px; }
+.technician-portal .facts { grid-column: 1 / 5; grid-row: 1; grid-template-columns: 1fr; box-shadow: none !important; }
+.technician-portal .facts h2,
+.technician-portal .facts small,
+.technician-portal .facts div:has(#reported) { grid-column: 1 / -1; }
+.technician-portal .facts div { padding-bottom: 12px; border-bottom: 1px solid var(--portal-line); }
+.technician-portal .facts div:last-of-type { border-bottom: 0; }
+.technician-portal .facts span { color: var(--portal-muted); font-size: 10px; font-weight: 750; letter-spacing: 0.08em; }
+.technician-portal .facts strong { margin-top: 3px; color: var(--portal-text); font-size: 15px; font-weight: 650; }
+.technician-portal .facts #device { font-size: 18px; }
+.technician-portal .evaluation-overview { grid-column: 5 / -1; grid-row: 1; border-top: 4px solid var(--portal-accent) !important; }
+.evaluation-overview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.evaluation-overview-head h2 { margin: 5px 0 0; font-size: 20px; }
+.evaluation-overview-head > strong { color: var(--portal-accent-strong); font-size: 28px; }
+.evaluation-overview progress {
+  display: block;
+  width: 100%;
+  height: 14px;
+  margin: 22px 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--portal-surface-3);
+}
+.evaluation-overview progress::-webkit-progress-bar { background: var(--portal-surface-3); }
+.evaluation-overview progress::-webkit-progress-value { background: var(--portal-accent); }
+.evaluation-overview progress::-moz-progress-bar { background: var(--portal-accent); }
+.evaluation-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--portal-line); }
+.evaluation-metrics div { display: grid; gap: 4px; padding: 13px 16px; border-left: 1px solid var(--portal-line); }
+.evaluation-metrics div:first-child { border-left: 0; }
+.evaluation-metrics span { color: var(--portal-muted); font-size: 11px; font-weight: 650; text-transform: uppercase; }
+.evaluation-metrics strong { color: var(--portal-text); font-size: 22px; }
+.evaluation-overview #completion-message { margin: 14px 0 0; font-size: 12px; }
+.technician-portal .device-guide { grid-column: 1 / 5; grid-row: 2; box-shadow: none !important; }
+.technician-portal .device-guide summary { cursor: pointer; color: var(--portal-text); font-weight: 650; }
+.technician-portal .device-guide ul { color: var(--portal-muted); }
+.technician-portal .service-values-card { grid-column: 5 / -1; grid-row: 2 / span 3; }
+.technician-portal #form > .card:not(.facts):not(.device-guide):not(.service-values-card):not(.evaluation-overview) { grid-column: 5 / -1; }
+.technician-portal #submit,
+.technician-portal .submission-note,
+.technician-portal #submit-error { grid-column: 5 / -1; }
+.technician-portal .section-heading { padding-bottom: 16px; border-bottom: 1px solid var(--portal-line); }
+.technician-portal .section-heading > small { border: 1px solid var(--portal-line); border-radius: 3px; background: var(--portal-accent-soft); padding: 5px 8px; }
+.technician-portal .service { margin-top: 18px; padding: 18px; border: 1px solid var(--portal-line); background: var(--portal-surface-2); }
+.technician-portal .service,
+.technician-portal .service-outcome-fields > label,
+.technician-portal .service-option-fields > label,
+.technician-portal .service input,
+.technician-portal .service select { min-width: 0; max-width: 100%; }
+.technician-portal .service > strong {
+  display: block;
+  margin: -2px 0 16px;
+  padding: 11px 13px;
+  border-left: 4px solid var(--portal-accent);
+  background: var(--portal-accent-soft);
+  color: var(--portal-text);
+  font-size: 17px;
+}
+.technician-portal .service-option {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--portal-line);
+  border-radius: 3px;
+  background: var(--portal-surface);
+}
+.technician-portal .technician-service-name {
+  border-color: color-mix(in srgb, var(--portal-accent) 55%, var(--portal-line));
+  border-radius: 3px;
+  background: var(--portal-accent-soft);
+  color: var(--portal-text);
+}
+.technician-portal .price-wrap { border-radius: 3px; background: var(--portal-surface); }
+.technician-portal button { border: 1px solid var(--portal-text); background: var(--portal-text); color: var(--portal-surface); font-weight: 650; }
+.technician-portal #submit { min-height: 50px; border-color: var(--portal-accent); background: var(--portal-accent); color: #171300; }
+.technician-portal .add-option { border-color: var(--portal-line-strong); background: var(--portal-surface); color: var(--portal-text); }
+.technician-portal .remove-option { width: auto; border-color: var(--portal-danger); background: transparent; color: var(--portal-danger); }
+.technician-portal .notice { border-left: 4px solid var(--portal-accent) !important; }
+.technician-portal .notice.error { border-left-color: var(--portal-danger) !important; }
+.technician-portal .notice.success { border-left-color: var(--portal-success) !important; }
+.technician-portal .pin-icon { border-radius: 4px; background: var(--portal-accent-soft); color: var(--portal-accent-strong); }
+.technician-portal #submit-error { border-radius: 4px; background: var(--portal-danger-soft); color: var(--portal-danger); }
+
+@media (max-width: 1040px) {
+  .portal-toolbar-inner,
+  .customer-portal .shell,
+  .technician-portal main { width: calc(100% - 28px); }
+  .customer-portal .tracking,
+  .technician-portal #form { display: flex; flex-direction: column; gap: 14px; }
+  .customer-portal .tracking > *,
+  .technician-portal #form > *,
+  .technician-portal .technician-side-column,
+  .technician-portal .technician-work-column { width: 100%; min-width: 0; }
+  .customer-portal .hero-card { min-height: 0; padding: 22px; }
+  .customer-portal .progress-card { order: 2; }
+  .customer-portal .info-grid { order: 3; }
+  .customer-portal #approval-card,
+  .customer-portal #pickup-notice { order: 1; }
+  .customer-portal #device-details-card,
+  .customer-portal #diagnosis-card,
+  .customer-portal #services-card,
+  .customer-portal #timeline-card { order: 4; }
+  .customer-portal .tracking > footer { order: 5; }
+  .technician-portal .technician-side-column,
+  .technician-portal .technician-work-column { display: contents; }
+  .technician-portal .facts { order: 1; }
+  .technician-portal .service-values-card { order: 2; }
+  .technician-portal .technician-work-column > .card:not(.service-values-card):not(.evaluation-overview) { order: 3; }
+  .technician-portal .evaluation-overview { order: 4; }
+  .technician-portal .device-guide { order: 5; }
+  .technician-portal #submit,
+  .technician-portal .submission-note { order: 6; }
+}
+
+@media (max-width: 560px) {
+  body { font-size: 14px; }
+  .portal-toolbar-inner { min-height: 44px; }
+  .portal-security-label { font-size: 10px; }
+  .portal-theme-choices button { min-height: 28px; padding: 3px 8px; font-size: 11px; }
+  .customer-portal .shell,
+  .technician-portal main { width: calc(100% - 20px); padding-top: 20px; }
+  .customer-portal .brand { min-height: 58px; padding-bottom: 14px; }
+  .customer-portal .brand::after { display: none; }
+  .customer-portal .hero-copy h2 { font-size: 25px; }
+  .progress-overview { grid-template-columns: 82px minmax(0, 1fr); gap: 14px; }
+  .progress-meter { width: 80px; height: 80px; }
+  .progress-meter strong { font-size: 17px; }
+  .customer-portal .info-grid { grid-template-columns: 1fr; }
+  .customer-portal .state-card { padding: 28px 20px; }
+  .evaluation-metrics div { padding: 11px; }
+  .evaluation-metrics strong { font-size: 19px; }
+  .technician-portal .service-option-fields,
+  .technician-portal .service-outcome-fields { grid-template-columns: 1fr; }
+  .technician-portal .section-heading { display: grid; }
+  .technician-portal .section-heading > small { width: max-content; }
+  .technician-portal #form .card { padding: 17px; }
+  .technician-portal .facts h2,
+  .technician-portal .service-values-card h2,
+  .technician-portal .technician-work-column > .card h2 { font-size: 19px; line-height: 1.25; }
+  .technician-portal .facts strong { font-size: 14px; line-height: 1.4; }
+  .technician-portal .facts #device { font-size: 16px; }
+  .technician-portal .facts div { padding-bottom: 9px; }
+  .technician-portal .service-values-card .muted { font-size: 12px; line-height: 1.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition: none !important; }
+}
+
+/* Contraste garantido no tema claro: alguns cartões ainda recebem estilos
+   legados do tema escuro, então as cores legíveis ficam explícitas aqui. */
+[data-portal-theme="light"] .customer-portal .device-details-card,
+[data-portal-theme="light"] .customer-portal .approval-card,
+[data-portal-theme="light"] .customer-portal .revision-card {
+  background: var(--portal-surface) !important;
+  color: var(--portal-text) !important;
+}
+[data-portal-theme="light"] .customer-portal .detail-card p,
+[data-portal-theme="light"] .customer-portal .detail-card li > small,
+[data-portal-theme="light"] .customer-portal .device-details-grid small,
+[data-portal-theme="light"] .customer-portal .device-details-note,
+[data-portal-theme="light"] .customer-portal .approval-summary span,
+[data-portal-theme="light"] .customer-portal .approval-footnote,
+[data-portal-theme="light"] .customer-portal .timeline-item span,
+[data-portal-theme="light"] .customer-portal .tracking footer p {
+  color: var(--portal-muted) !important;
+}
+[data-portal-theme="light"] .customer-portal .device-details-grid > div,
+[data-portal-theme="light"] .customer-portal .detail-card li,
+[data-portal-theme="light"] .customer-portal .revision-values > div {
+  background: var(--portal-surface-2) !important;
+  color: var(--portal-text) !important;
+  border-color: var(--portal-line) !important;
+}
+[data-portal-theme="light"] .customer-portal .device-details-grid strong,
+[data-portal-theme="light"] .customer-portal .detail-card li > span,
+[data-portal-theme="light"] .customer-portal .approval-summary strong,
+[data-portal-theme="light"] .customer-portal .approval-summary small,
+[data-portal-theme="light"] .customer-portal .revision-values strong,
+[data-portal-theme="light"] .customer-portal .revision-warning {
+  color: var(--portal-text) !important;
+}
+[data-portal-theme="light"] .technician-portal .service,
+[data-portal-theme="light"] .technician-portal .service-option,
+[data-portal-theme="light"] .technician-portal .price-wrap,
+[data-portal-theme="light"] .technician-portal .evaluation-metrics {
+  background: var(--portal-surface-2) !important;
+  color: var(--portal-text) !important;
+  border-color: var(--portal-line) !important;
+}
+[data-portal-theme="light"] .technician-portal .service p,
+[data-portal-theme="light"] .technician-portal .submission-note,
+[data-portal-theme="light"] .technician-portal .muted,
+[data-portal-theme="light"] .technician-portal .service-option small {
+  color: var(--portal-muted) !important;
+}
+
+/* Fluxo contínuo no computador: elimina lacunas entre cartões de alturas diferentes. */
+@media (min-width: 1041px) {
+  .customer-portal .shell { width: min(980px, calc(100% - 48px)); }
+  .customer-portal .tracking { grid-template-columns: minmax(0, 1fr); }
+  .customer-portal .tracking > *,
+  .customer-portal .tracking-head,
+  .customer-portal .hero-card,
+  .customer-portal .progress-card,
+  .customer-portal .info-grid,
+  .customer-portal #approval-card,
+  .customer-portal #revision-card,
+  .customer-portal #pickup-notice,
+  .customer-portal #services-card,
+  .customer-portal #device-details-card,
+  .customer-portal #diagnosis-card,
+  .customer-portal #timeline-card,
+  .customer-portal .tracking > footer {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .customer-portal .hero-card { min-height: 0; }
+  .customer-portal .device-details-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .technician-portal main { width: min(980px, calc(100% - 48px)); }
+  .technician-portal #form { display: flex; flex-direction: column; gap: 14px; }
+  .technician-portal .technician-side-column,
+  .technician-portal .technician-work-column { display: contents; }
+  .technician-portal .facts { order: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .technician-portal .facts h2,
+  .technician-portal .facts small,
+  .technician-portal .facts div:has(#device),
+  .technician-portal .facts div:has(#reported) { grid-column: 1 / -1; }
+  .technician-portal .evaluation-overview { order: 2; }
+  .technician-portal .service-values-card { order: 3; }
+  .technician-portal .technician-work-column > .card:not(.service-values-card):not(.evaluation-overview) { order: 4; }
+  .technician-portal .device-guide { order: 5; }
+  .technician-portal #submit,
+  .technician-portal #submit-error,
+  .technician-portal .submission-note { order: 6; }
+}

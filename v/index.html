@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Vitrine de aparelhos disponíveis na loja.">
+  <meta property="og:title" content="Vitrine de aparelhos — Assistência Simplificada">
+  <meta property="og:description" content="Confira aparelhos novos e seminovos disponíveis para pronta entrega ou sob encomenda.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://assistenciasimplificada.site/favicon.svg">
+  <meta name="twitter:card" content="summary">
+  <title>Vitrine de aparelhos</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/v/page.css?v=10.0.0-20260923">
+</head>
+<body>
+  <header class="topbar"><a href="/" aria-label="Voltar para o site da loja"><img id="store-logo" src="/favicon.svg" alt=""><span><strong id="store-name">Vitrine da loja</strong><small id="store-subtitle">Catálogo de aparelhos</small></span></a><button id="share" type="button" aria-label="Compartilhar catálogo"><span>Compartilhar catálogo</span></button><div class="mobile-catalog-controls"><div class="mobile-search"><label><span class="sr-only">Buscar aparelhos</span><input id="mobile-search" list="brand-suggestions" maxlength="80" placeholder="Buscar modelo, marca ou memória…" inputmode="search"></label><button id="mobile-search-submit" type="button" class="mobile-search-submit" aria-label="Concluir pesquisa">Pesquisar</button></div><datalist id="brand-suggestions"><option value="Apple"><option value="Samsung"><option value="Motorola"><option value="Xiaomi"><option value="Redmi"><option value="Realme"><option value="Huawei"><option value="Asus"><option value="Google Pixel"><option value="Nokia"><option value="Oppo"><option value="Poco"><option value="Infinix"><option value="Tecno"></datalist><nav class="mobile-filter-strip" aria-label="Filtros rápidos"><button type="button" class="active" data-kind="" data-availability="">Todos</button><button type="button" data-kind="Novo" data-availability="">Novos</button><button type="button" data-kind="Usado" data-availability="">Seminovos</button><button type="button" data-kind="" data-availability="ready">Pronta entrega</button><button type="button" data-kind="" data-availability="order">Sob encomenda</button><label class="mobile-sort"><span class="sr-only">Ordenar aparelhos</span><select id="mobile-sort"><option value="featured">Mais relevantes</option><option value="lowest">Menor preço</option><option value="highest">Maior preço</option><option value="recent">Mais recentes</option><option value="ram">RAM</option></select></label></nav></div></header>
+  <main>
+    <section class="hero"><div><p>APARELHOS DISPONÍVEIS</p><h1>Encontre o aparelho ideal para você</h1><span id="hero-description">Consulte os modelos disponíveis e chame nossa equipe para confirmar a compra.</span><strong id="catalog-mode" class="catalog-mode" hidden>Mostruário demonstrativo · dados ilustrativos</strong></div></section>
+    <section class="summary" aria-label="Resumo da vitrine"><article><small>No catálogo</small><strong id="total-items">—</strong></article><article><small>Pronta entrega</small><strong id="ready-items">—</strong></article><article><small>Sob encomenda</small><strong id="order-items">—</strong></article><article><small>Seminovos</small><strong id="used-items">—</strong></article></section>
+    <section id="best-seller" class="best-seller" hidden></section>
+    <section class="toolbar" aria-label="Filtros"><label><span class="sr-only">Buscar</span><input id="search" list="brand-suggestions" maxlength="80" placeholder="Buscar modelo, marca, memória..."></label><select id="kind"><option value="">Novos e seminovos</option><option value="Novo">Novos</option><option value="Usado">Seminovos</option></select><select id="availability"><option value="">Toda disponibilidade</option><option value="ready">Pronta entrega</option><option value="order">Sob encomenda</option><option value="unavailable">Indisponíveis</option></select><select id="storage"><option value="">Todo armazenamento</option></select><select id="ram" hidden><option value="">Filtrar por RAM</option></select><select id="sort"><option value="featured">Mais relevantes</option><option value="lowest">Menor preço</option><option value="highest">Maior preço</option><option value="recent">Mais recentes</option><option value="ram">RAM</option></select></section>
+    <p id="status" class="status">Carregando vitrine...</p>
+    <section id="catalog" class="grid" aria-live="polite"></section>
+    <section id="detail" class="detail" hidden></section>
+  </main>
+  <footer><span>Informações e disponibilidade confirmadas diretamente com a loja.</span><strong>Por Gabriel Schmeisk</strong></footer>
+  <script src="/v/page.js?v=10.0.0-20260923" defer></script>
+</body>
+</html>

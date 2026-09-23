@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>Editor de preços da Vitrine</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/v/precos/page.css?v=installments-20260916-1">
+</head>
+<body>
+  <main>
+    <header><div><p>VITRINE DA LOJA</p><h1>Editor de preços</h1><span id="store-name">Acesso restrito</span></div><strong id="expiry"></strong></header>
+    <section id="access" class="access-card">
+      <div class="access-icon">R$</div><h2>Digite o código de acesso</h2><p>Use o código de seis números enviado pela loja junto com este link.</p>
+      <form id="access-form"><label>Código<input id="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label><button>Entrar</button></form>
+      <small id="access-error" role="alert"></small>
+    </section>
+    <section id="editor" hidden>
+      <div class="toolbar"><label><span>Buscar aparelho</span><input id="search" placeholder="Marca ou modelo"></label><div><button id="copy-names" type="button">Copiar nomes</button><strong id="count">0 alterações</strong><button id="save" type="button" disabled>Salvar alterações</button></div></div>
+      <div id="items" class="items"></div>
+      <p class="privacy">Este acesso permite alterar preços e limites de parcelamento da Vitrine. As opções com juros seguem as taxas cadastradas pela loja no aplicativo.</p>
+    </section>
+    <div id="message" role="status" aria-live="polite"></div>
+  </main>
+  <script src="/v/precos/page.js?v=copy-device-names-20260917-1" defer></script>
+</body>
+</html>

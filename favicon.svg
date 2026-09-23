@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo Assistência Simplificada</title>
+  <desc id="desc">Monograma A formado por uma faixa ciano ascendente e um módulo dourado.</desc>
+  <defs>
+    <linearGradient id="cyan" x1="86" y1="430" x2="315" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#009FBE"/>
+      <stop offset="1" stop-color="#39D9E7"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="272" y1="192" x2="425" y2="426" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD83D"/>
+      <stop offset="1" stop-color="#E9B900"/>
+    </linearGradient>
+  </defs>
+  <path d="M73 420 219 96c11-24 29-36 54-36h62L175 420H73Z" fill="url(#cyan)"/>
+  <path d="m280 184 159 236H323l-96-142 53-94Z" fill="url(#gold)"/>
+  <path d="M196 312h121l39 58H170l26-58Z" fill="#F5FBFC" fill-opacity=".98"/>
+</svg>

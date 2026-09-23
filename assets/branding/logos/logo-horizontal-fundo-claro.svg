@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">Assistência Simplificada</title>
+  <desc id="desc">Logo horizontal colorido para fundos claros.</desc>
+  <defs>
+    <linearGradient id="cyan" x1="55" y1="350" x2="260" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#009FBE"/><stop offset="1" stop-color="#39D9E7"/></linearGradient>
+    <linearGradient id="gold" x1="230" y1="145" x2="365" y2="350" gradientUnits="userSpaceOnUse"><stop stop-color="#FFD83D"/><stop offset="1" stop-color="#E9B900"/></linearGradient>
+  </defs>
+  <g transform="translate(42 24) scale(.72)">
+    <path d="M73 420 219 96c11-24 29-36 54-36h62L175 420H73Z" fill="url(#cyan)"/>
+    <path d="m280 184 159 236H323l-96-142 53-94Z" fill="url(#gold)"/>
+    <path d="M196 312h121l39 58H170l26-58Z" fill="#F5FBFC"/>
+  </g>
+  <text x="430" y="190" fill="#071821" font-family="Segoe UI Variable Display, Segoe UI, Arial, sans-serif" font-size="120" font-weight="750" letter-spacing="-4">Assistência</text>
+  <text x="434" y="292" fill="#009FBE" font-family="Segoe UI Variable Display, Segoe UI, Arial, sans-serif" font-size="82" font-weight="650" letter-spacing="9">SIMPLIFICADA</text>
+  <rect x="434" y="326" width="128" height="8" rx="4" fill="#009FBE"/>
+  <rect x="574" y="326" width="28" height="8" rx="4" fill="#E9B900"/>
+</svg>
