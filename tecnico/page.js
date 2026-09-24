@@ -371,13 +371,13 @@
     if (TOKEN_PATTERN.test(tokenFromAddress)) {
       sessionStorage.setItem(tokenStorageKey, tokenFromAddress);
       state.token = tokenFromAddress;
-    } else if (isReload) {
+    } else if (isReload && !rawFragment && history.state?.linkToken === sessionStorage.getItem(tokenStorageKey)) {
       state.token = sessionStorage.getItem(tokenStorageKey) || "";
     }
   } catch {
     state.token = tokenFromAddress;
   }
-  history.replaceState(null, "", location.pathname);
+  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname);
   if (!TOKEN_PATTERN.test(state.token)) return fail("O endereço está incompleto ou inválido.");
   const load = async () => {
     $("retry").disabled = true;

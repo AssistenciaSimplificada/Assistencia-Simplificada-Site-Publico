@@ -141,6 +141,7 @@
         action,
         token: state.token,
         pin: state.pin,
+        ...(action === "approve" ? { approvalVersion: state.tracking?.snapshot?.approvalVersion || "" } : {}),
         ...(action === "approve" ? { decision, signature, note } : {}),
         ...(action === "feedback" && feedback ? feedback : {}),
       }),
@@ -220,6 +221,11 @@
         return true;
       };
       if (!checkExpiry()) return;
+    }
+    if (state.tracking?.snapshot?.approvalVersion !== tracking.snapshot?.approvalVersion) {
+      state.signatureDrawn = false;
+      const canvas = $("approval-signature-canvas");
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
     }
     state.tracking = tracking;
     const snapshot = tracking.snapshot || {};
@@ -496,7 +502,7 @@
     }
   };
   const load = async () => {
-    if (state.loading) return;
+    if (state.loading || state.approving) return;
     state.loading = true;
     try {
       render(await api());
@@ -704,13 +710,13 @@
     if (TOKEN_PATTERN.test(tokenFromAddress)) {
       sessionStorage.setItem(tokenStorageKey, tokenFromAddress);
       state.token = tokenFromAddress;
-    } else if (isReload) {
+    } else if (isReload && !rawFragment && history.state?.linkToken === sessionStorage.getItem(tokenStorageKey)) {
       state.token = sessionStorage.getItem(tokenStorageKey) || "";
     }
   } catch {
     state.token = tokenFromAddress;
   }
-  history.replaceState(null, "", location.pathname);
+  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname);
   if (!TOKEN_PATTERN.test(state.token))
     return fail(
       "O endereço está incompleto. Abra novamente o link enviado pela assistência.",

@@ -437,9 +437,15 @@
       applyStoreBranding(); document.querySelector("#store-name").textContent = catalog.storeName; document.querySelector("#store-subtitle").textContent = "Demonstração · dados ilustrativos"; document.querySelector("#total-items").textContent = catalog.items.length; document.querySelector("#ready-items").textContent = catalog.items.filter(item => item.availability !== "order").length; document.querySelector("#order-items").textContent = catalog.items.filter(item => item.availability === "order").length; document.querySelector("#used-items").textContent = catalog.items.filter(item => item.purchaseKind === "Usado").length; document.querySelector("#status").textContent = "Mostruário demonstrativo · dados ilustrativos"; document.querySelector("#catalog-mode").hidden = false; document.querySelector("#hero-description").textContent = "Conheça a experiência da vitrine pública. Os aparelhos abaixo são exemplos e não representam estoque real."; document.title = "Mostruário de vitrine — Assistência Simplificada"; renderBestSeller(); render(); return;
     }
     if (!/^[A-Za-z0-9_-]{12}$/.test(storeCode || "")) throw new Error("link_invalid");
-    const response = await fetch(`${API}/public/${encodeURIComponent(storeCode)}?v=${Date.now()}`, { cache: "no-store" });
-    const body = await response.json();
-    if (!response.ok || !body.catalog) throw new Error("not_found");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let body;
+    try {
+      const response = await fetch(`${API}/public/${encodeURIComponent(storeCode)}?v=${Date.now()}`, { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error(response.status === 404 ? "not_found" : response.status === 403 ? "store_unavailable" : "connection_unavailable");
+      body = await response.json();
+      if (!body.catalog || !Array.isArray(body.catalog.items)) throw new Error("connection_unavailable");
+    } finally { clearTimeout(timeout); }
     catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...item, warranty: displayWarranty(item) }))) };
     populateMemoryFilters();
     document.querySelector("#catalog-mode").hidden = true;
@@ -477,5 +483,16 @@
     if (event.key === "Escape" && !detailNode.hidden) closeDetail();
   });
   document.querySelector("#share").addEventListener("click", async () => { const title = `Vitrine — ${catalog?.storeName || "Loja"}`; const text = `Confira os aparelhos disponíveis na vitrine de ${catalog?.storeName || "nossa loja"}.`; const url = catalogShareUrl(); try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
-  load().catch(error => { statusNode.textContent = error.message === "link_invalid" ? "Este endereço de vitrine está incompleto." : "Esta vitrine não está disponível no momento."; catalogNode.innerHTML = '<div class="empty"><h2>Vitrine indisponível</h2><p>Peça à loja um novo endereço.</p></div>'; });
+  const loadCatalog = async () => {
+    statusNode.textContent = "Carregando vitrine…";
+    try { await load(); } catch (error) {
+      const permanent = ["link_invalid", "not_found", "store_unavailable"].includes(error.message);
+      statusNode.textContent = error.message === "link_invalid" ? "Este endereço de vitrine está incompleto." : "Não foi possível abrir a vitrine agora.";
+      catalogNode.innerHTML = permanent
+        ? '<div class="empty"><h2>Vitrine indisponível</h2><p>Confirme o endereço e a disponibilidade com a loja.</p></div>'
+        : '<div class="empty"><h2>Falha de conexão</h2><p>Confira sua internet e tente novamente. O endereço pode continuar válido.</p><button type="button" id="retry-catalog">Tentar novamente</button></div>';
+      document.querySelector("#retry-catalog")?.addEventListener("click", event => { event.currentTarget.disabled = true; void loadCatalog(); });
+    }
+  };
+  void loadCatalog();
 })();
