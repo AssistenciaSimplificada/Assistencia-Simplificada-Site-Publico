@@ -122,3 +122,12 @@ footer{display:grid;gap:6px;place-items:center}footer strong{color:#42586a;font-
 .variant-picker{margin:14px 0;padding:13px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.variant-picker strong{display:block;margin-bottom:9px;color:#253442;font-size:.85rem}.variant-picker>div{display:flex;flex-wrap:wrap;gap:8px}.variant-picker button{min-height:42px;padding:9px 15px;border:1px solid #cbd5df;border-radius:9px;background:#fff;color:#243544;font:inherit;font-size:.86rem;font-weight:700;cursor:pointer}.variant-picker button[aria-pressed="true"]{border-color:var(--blue);background:#e9f3ff;color:#155b93;box-shadow:0 0 0 2px rgba(25,109,177,.11)}.variant-picker button:focus-visible{outline:3px solid #e1bd00;outline-offset:2px}
 .zoomable:not(.is-zoomed):hover img{transform:none}
 @media(max-width:480px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.card{min-width:0}.card .picture{height:158px;padding:8px}.card .content{min-width:0;padding:10px}.card .content h2{font-size:.88rem;overflow-wrap:anywhere}.card .content p{font-size:.7rem;overflow-wrap:anywhere}.card .tags span{font-size:.61rem}.card .price{font-size:clamp(1rem,4vw,1.2rem);overflow-wrap:anywhere}.card .card-price,.card .installment-line{font-size:.69rem;line-height:1.35}.card .payment-methods{font-size:.65rem}.catalog-group-title{font-size:.95rem;margin-top:16px}}
+
+.product-description{margin:16px 0 18px;padding:18px 20px;border:1px solid #d5e1eb;border-left:4px solid var(--blue);border-radius:10px;background:linear-gradient(135deg,#f8fbfe,#fff)}
+.product-description h2{margin:0 0 12px;color:#1c3448;font-size:1rem;line-height:1.3}
+.product-description-content{display:grid;gap:10px;color:#34485a;font-size:.86rem;line-height:1.65}
+.product-description-content p{margin:0;overflow-wrap:anywhere}
+.product-description-content strong{color:#182f43;font-weight:800}
+.product-description-content .description-point{display:flex;align-items:flex-start;gap:9px}
+.product-description-content .description-point>span:first-child{color:#137b53;font-weight:900}
+@media(max-width:640px){.product-description{margin:14px 0;padding:16px}.product-description-content{font-size:.9rem;line-height:1.6}}
