@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; img-src data:; base-uri 'none'; form-action 'self'">
+  <title>Assinar documento | Assistência Simplificada</title>
+  <link rel="stylesheet" href="/assinar/page.css">
+  <script src="/assinar/config.js" defer></script>
+  <script src="/assinar/page.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header><strong>Assistência Simplificada</strong><span>Assinatura de documento</span></header>
+    <section id="loading" class="card" role="status"><h1>Consultando o documento…</h1></section>
+    <section id="error" class="card" hidden role="alert"><h1>Não foi possível assinar</h1><p id="error-text"></p></section>
+    <article id="document" hidden>
+      <div class="card summary">
+        <span class="eyebrow">CONFIRA ANTES DE ASSINAR</span>
+        <h1 id="public-number"></h1>
+        <p id="device-label"></p>
+        <p>Responsável pela assinatura: <strong id="signer-name"></strong></p>
+        <p>Link válido até <strong id="expiry"></strong>.</p>
+      </div>
+      <section class="card" aria-labelledby="terms-title">
+        <h2 id="terms-title">Conteúdo apresentado pela loja</h2>
+        <p class="hint">Confira também o PDF enviado pela loja. Assine apenas se os dados e as condições estiverem corretos.</p>
+        <pre id="disclosure"></pre>
+      </section>
+      <form id="signature-form" class="card">
+        <h2>Assinatura</h2>
+        <p>Assine com o dedo ou mouse no espaço abaixo.</p>
+        <canvas id="signature" width="720" height="300" aria-label="Área para desenhar a assinatura"></canvas>
+        <button id="clear" type="button" class="secondary">Limpar assinatura</button>
+        <label class="accept"><input id="accept" type="checkbox" required> Recebi e conferi o PDF, li as condições acima e concordo em assinar este documento.</label>
+        <p id="submit-error" class="error-text" role="alert" hidden></p>
+        <button id="submit" type="submit">Confirmar assinatura</button>
+      </form>
+    </article>
+    <section id="success" class="card" hidden role="status">
+      <h1>Assinatura recebida</h1>
+      <p>Ela ficará disponível para a loja sincronizar por 48 horas. O comprovante assinado será gerado no computador da loja; peça sua via à assistência.</p>
+    </section>
+  </main>
+</body>
+</html>

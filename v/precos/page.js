@@ -75,6 +75,12 @@
     }));
     original = new Map(items.map(item => [item.code, originalValues(item)]));
     document.querySelector("#store-name").textContent = body.storeName;
+    const banner = document.querySelector("#editor-store-banner");
+    const bannerImage = document.querySelector("#editor-store-banner-image");
+    const bannerUrl = typeof body.bannerUrl === "string" && /^\/media\/[A-Za-z0-9_-]{12}\/banner\.webp\?v=[a-f0-9]{12}$/.test(body.bannerUrl) ? body.bannerUrl : "";
+    banner.hidden = !bannerUrl;
+    if (bannerUrl) { bannerImage.src = imageUrl(bannerUrl); bannerImage.alt = `Banner da ${body.storeName}`; bannerImage.onerror = () => { banner.hidden = true; }; }
+    else bannerImage.removeAttribute("src");
     document.querySelector("#expiry").textContent = `Acesso válido até ${new Intl.DateTimeFormat("pt-BR").format(new Date(body.expiresAt))}`;
     access.hidden = true; editor.hidden = false; render();
   };

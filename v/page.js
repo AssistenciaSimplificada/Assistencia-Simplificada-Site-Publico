@@ -178,6 +178,12 @@
     root.setProperty("--store-primary",primary); root.setProperty("--store-contrast",luminance > .48 ? "#111418" : "#ffffff");
     const logo = document.querySelector("#store-logo");
     logo.src = catalog.logoUrl ? imageUrl(catalog.logoUrl) : "/favicon.svg"; logo.alt = `Logo de ${catalog.storeName}`; logo.onerror = () => { logo.onerror = null; logo.src = "/favicon.svg"; };
+    const banner = document.querySelector("#store-banner");
+    const bannerImage = document.querySelector("#store-banner-image");
+    const bannerUrl = typeof catalog.bannerUrl === "string" && /^\/media\/[A-Za-z0-9_-]{12}\/banner\.webp\?v=[a-f0-9]{12}$/.test(catalog.bannerUrl) ? catalog.bannerUrl : "";
+    banner.hidden = !bannerUrl;
+    if (bannerUrl) { bannerImage.src = imageUrl(bannerUrl); bannerImage.alt = `Banner da ${catalog.storeName}`; bannerImage.onerror = () => { banner.hidden = true; }; }
+    else bannerImage.removeAttribute("src");
   }
   const paymentMethods = item => (Array.isArray(item.acceptedPaymentMethods) ? item.acceptedPaymentMethods : []).join(" • ");
   const installmentOptions = item => {
