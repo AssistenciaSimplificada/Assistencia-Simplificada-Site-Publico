@@ -163,27 +163,13 @@
     </article>
   </main>
   <dialog id="evaluation-dialog" aria-labelledby="evaluation-title">
-    <form method="dialog" id="evaluation-form" class="evaluation-form">
-      <small>ANTES DE CONTINUAR</small><h2 id="evaluation-title">Como foi seu atendimento?</h2>
-      <p>Responda rapidamente para liberar o acompanhamento. A resposta é enviada com segurança à assistência e fica registrada somente no aplicativo da loja.</p>
-      <div class="evaluation-choices" role="group" aria-label="Avaliação do atendimento">
-        <label><input type="checkbox" name="good" value="Fui bem atendido"> Fui bem atendido</label>
-        <label><input type="checkbox" name="fast" value="Serviço foi rápido"> Serviço foi rápido</label>
-        <label><input type="checkbox" name="clear" value="Recebi explicações claras"> Recebi explicações claras</label>
-      </div>
-      <fieldset class="evaluation-stars" aria-labelledby="evaluation-stars-label">
-        <legend id="evaluation-stars-label">Nota geral</legend>
-        <div role="radiogroup" aria-label="Escolha de uma a cinco estrelas">
-          <input id="evaluation-star-1" type="radio" name="stars" value="1" required><label for="evaluation-star-1" aria-label="1 estrela">★</label>
-          <input id="evaluation-star-2" type="radio" name="stars" value="2"><label for="evaluation-star-2" aria-label="2 estrelas">★</label>
-          <input id="evaluation-star-3" type="radio" name="stars" value="3"><label for="evaluation-star-3" aria-label="3 estrelas">★</label>
-          <input id="evaluation-star-4" type="radio" name="stars" value="4"><label for="evaluation-star-4" aria-label="4 estrelas">★</label>
-          <input id="evaluation-star-5" type="radio" name="stars" value="5"><label for="evaluation-star-5" aria-label="5 estrelas">★</label>
-        </div>
-      </fieldset>
-      <p id="evaluation-error" class="evaluation-error" role="alert" hidden></p>
-      <button id="evaluation-submit" type="submit">Enviar avaliação e abrir atendimento</button>
-    </form>
+    <div class="evaluation-form">
+      <small>SEU ATENDIMENTO FOI CONCLUÍDO</small>
+      <h2 id="evaluation-title">Sua opinião ajuda nossa loja</h2>
+      <p>Abra a página da loja no Google para compartilhar sua experiência, se desejar. O acompanhamento será liberado assim que você abrir o link. Publicar uma avaliação é opcional.</p>
+      <a id="evaluation-link" href="#" target="_blank" rel="noopener noreferrer">Abrir Google e ver meu atendimento <span aria-hidden="true">↗</span></a>
+      <small>O link do atendimento continua válido pelo prazo informado pela loja.</small>
+    </div>
   </dialog>
   <dialog id="photo-dialog" aria-labelledby="photo-title">
     <header><h2 id="photo-title">Foto do aparelho</h2><button id="close-photo" type="button">Fechar</button></header>

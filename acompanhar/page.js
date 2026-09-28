@@ -3,7 +3,26 @@
   const API_URL = window.__ASSISTENCIA_CUSTOMER_CONFIG__?.apiUrl;
   if (!API_URL) throw new Error("A configuração pública não foi carregada.");
   const $ = (id) => document.getElementById(id);
-  const state = { token: "", pin: "", tracking: null, timer: null, expiryTimer: null, statusTimer: null, loading: false, approving: false, signatureDrawn: false, signatureMode: "disabled" };
+  const state = { token: "", reviewCookie: "", reviewClickedInPage: false, pin: "", tracking: null, timer: null, expiryTimer: null, statusTimer: null, loading: false, approving: false, signatureDrawn: false, signatureMode: "disabled" };
+  const googleReviewUrl = (value) => {
+    try {
+      const url = new URL(String(value || ""));
+      if (url.protocol !== "https:" || url.username || url.password || url.port || url.hash) return "";
+      if (url.hostname === "g.page" && /^\/r\/[A-Za-z0-9_-]+\/review\/?$/.test(url.pathname) && !url.search) return url.href;
+      if (url.hostname === "search.google.com" && url.pathname === "/local/writereview" && /^[A-Za-z0-9_-]+$/.test(url.searchParams.get("placeid") || "") && [...url.searchParams.keys()].every((key) => key === "placeid")) return url.href;
+    } catch { /* Invalid review URLs never become navigation targets. */ }
+    return "";
+  };
+  const reviewClicked = () => state.reviewClickedInPage || Boolean(state.reviewCookie && document.cookie.split("; ").includes(`${state.reviewCookie}=1`));
+  const rememberReviewClick = () => {
+    const expiresAt = Date.parse(state.tracking?.expiresAt || "");
+    const remaining = Number.isFinite(expiresAt) ? expiresAt - Date.now() : 0;
+    if (!state.reviewCookie || remaining <= 0) return false;
+    state.reviewClickedInPage = true;
+    const maxAge = Math.max(1, Math.min(259200, Math.floor(remaining / 1000)));
+    document.cookie = `${state.reviewCookie}=1; Max-Age=${maxAge}; Path=/; SameSite=Lax; Secure`;
+    return true;
+  };
   const TOKEN_PATTERN = /^(?:[A-Za-z0-9_-]{43}|[A-F0-9]{5}\.[A-Za-z0-9_-]{22})$/i;
   const statusIndex = (status) =>
     status === "Aguardando técnico"
@@ -109,6 +128,7 @@
     $("services").replaceChildren();
     $("timeline").replaceChildren();
     $("photo-dialog").close();
+    if ($("evaluation-dialog").open) $("evaluation-dialog").close();
     $("photo-large").removeAttribute("src");
     $("error-text").textContent = message;
     show("retry", retryable);
@@ -126,7 +146,7 @@
       else scheduleStatusRefresh();
     }, 60_000);
   };
-  const api = async (action = "read", decision = "", signature = null, note = "", feedback = null) => {
+  const api = async (action = "read", decision = "", signature = null, note = "") => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
@@ -143,7 +163,6 @@
         pin: state.pin,
         ...(action === "approve" ? { approvalVersion: state.tracking?.snapshot?.approvalVersion || "" } : {}),
         ...(action === "approve" ? { decision, signature, note } : {}),
-        ...(action === "feedback" && feedback ? feedback : {}),
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -229,6 +248,19 @@
     }
     state.tracking = tracking;
     const snapshot = tracking.snapshot || {};
+    renderBranding(tracking);
+    const reviewUrl = googleReviewUrl(snapshot.storeBranding?.reviewUrl);
+    if (snapshot.deliveredAt && reviewUrl && !reviewClicked()) {
+      $("evaluation-link").href = reviewUrl;
+      show("loading", false);
+      show("pin-form", false);
+      show("error", false);
+      show("tracking", false);
+      const dialog = $("evaluation-dialog");
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    if ($("evaluation-dialog").open) $("evaluation-dialog").close();
     const approvalState = String(tracking.approvalState || snapshot.approvalState || "not_applicable");
     const approvalMode = snapshot.portalMode === "approval" || tracking.accessKind === "approval";
     const laborService = (Array.isArray(snapshot.services) ? snapshot.services : []).find(
@@ -491,15 +523,8 @@
     show("loading", false);
     show("pin-form", false);
     show("error", false);
-    const pickupRecorded = Boolean(snapshot.deliveredAt);
-    if (pickupRecorded && tracking.evaluationSubmitted !== true) {
-      show("tracking", false);
-      const dialog = $("evaluation-dialog");
-      if (!dialog.open) dialog.showModal();
-    } else {
-      show("tracking");
-      scheduleStatusRefresh();
-    }
+    show("tracking");
+    scheduleStatusRefresh();
   };
   const load = async () => {
     if (state.loading || state.approving) return;
@@ -522,36 +547,12 @@
       } else fail(error.message, error.retryable === true);
     } finally { state.loading = false; }
   };
-  $("evaluation-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const stars = document.querySelector("#evaluation-form input[name='stars']:checked")?.value || "";
-    if (!stars || !state.token) return;
-    const choices = [...document.querySelectorAll("#evaluation-form .evaluation-choices input:checked")].map((input) => input.value);
-    const submit = $("evaluation-submit");
-    show("evaluation-error", false);
-    submit.disabled = true;
-    submit.textContent = "Enviando avaliação…";
-    try {
-      render(await api("feedback", "", null, "", { stars: Number(stars), tags: choices }));
-      $("evaluation-dialog").close();
-    } catch (error) {
-      show("evaluation-error");
-      $("evaluation-error").textContent = error?.message || "Não foi possível enviar sua avaliação. Confira a conexão e tente novamente.";
-    } finally {
-      submit.disabled = false;
-      submit.textContent = "Enviar avaliação e abrir atendimento";
-    }
+  $("evaluation-link").addEventListener("click", (event) => {
+    if (!rememberReviewClick()) return event.preventDefault();
+    $("evaluation-dialog").close();
+    if (state.tracking) render(state.tracking);
   });
-  (document.querySelectorAll?.("#evaluation-form input[name='stars']") || []).forEach((input) => {
-    input.addEventListener("change", () => {
-      show("evaluation-error", false);
-      const selected = Number(input.value);
-      document.querySelectorAll(".evaluation-stars label").forEach((label) => {
-        const value = Number(label.htmlFor?.replace("evaluation-star-", ""));
-        label.classList.toggle("is-selected", value <= selected);
-      });
-    });
-  });
+  $("evaluation-dialog").addEventListener("cancel", (event) => event.preventDefault());
   $("close-photo").addEventListener("click", () => $("photo-dialog").close());
   $("photo-dialog").addEventListener("close", () => $("photo-large").removeAttribute("src"));
   $("retry").addEventListener("click", async () => {
@@ -721,5 +722,9 @@
     return fail(
       "O endereço está incompleto. Abra novamente o link enviado pela assistência.",
     );
-  void load();
+  void (async () => {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state.token));
+    state.reviewCookie = `as_review_${[...new Uint8Array(digest)].slice(0, 16).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    await load();
+  })().catch(() => fail("Não foi possível abrir este link com segurança. Atualize a página e tente novamente."));
 })();
