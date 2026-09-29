@@ -248,9 +248,13 @@
     }
     state.tracking = tracking;
     const snapshot = tracking.snapshot || {};
+    const deliveredAt = Date.parse(snapshot.deliveredAt);
+    // A previous pickup must not describe a reopened service as delivered.
+    const hasCurrentPickup = Number.isFinite(deliveredAt) &&
+      ["Finalizado", "Cancelado", "Rejeitado", "Abandonado"].includes(snapshot.status);
     renderBranding(tracking);
     const reviewUrl = googleReviewUrl(snapshot.storeBranding?.reviewUrl);
-    if (snapshot.deliveredAt && reviewUrl && !reviewClicked()) {
+    if (hasCurrentPickup && reviewUrl && !reviewClicked()) {
       $("evaluation-link").href = reviewUrl;
       show("loading", false);
       show("pin-form", false);
@@ -337,9 +341,10 @@
           ? "Sua decisão foi registrada como não aprovado. Fale com a assistência se quiser revisar o atendimento."
           : "";
     }
-    const deliveredAt = Date.parse(snapshot.deliveredAt);
-    show("pickup-notice", Number.isFinite(deliveredAt));
-    if (Number.isFinite(deliveredAt)) {
+    show("pickup-notice", hasCurrentPickup);
+    $("pickup-date").textContent = "";
+    $("pickup-expiry").textContent = "";
+    if (hasCurrentPickup) {
       $("pickup-date").textContent = `Retirada registrada em ${date(snapshot.deliveredAt)}.`;
       $("pickup-expiry").textContent = Number.isFinite(expiresAt)
         ? `Disponível até ${date(tracking.expiresAt)}.` : "";
@@ -717,7 +722,9 @@
   } catch {
     state.token = tokenFromAddress;
   }
-  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname);
+  // Mantém o endereço compartilhável; restaura links antigos somente no recarregamento validado.
+  const visibleFragment = rawFragment || (TOKEN_PATTERN.test(state.token) ? state.token : "");
+  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname + location.search + (visibleFragment ? `#${visibleFragment}` : ""));
   if (!TOKEN_PATTERN.test(state.token))
     return fail(
       "O endereço está incompleto. Abra novamente o link enviado pela assistência.",

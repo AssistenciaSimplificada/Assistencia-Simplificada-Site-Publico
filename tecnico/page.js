@@ -347,7 +347,7 @@
       $("success").hidden = false;
       state.pin = "";
       try { sessionStorage.removeItem("assistencia_technician_link_token"); } catch {}
-      history.replaceState(null, "", location.pathname);
+      // O link permanece visível após o envio; validade e uso são controlados pelo servidor.
     } catch (error) {
       const notice = document.createElement("p");
       notice.id = "submit-error";
@@ -377,7 +377,9 @@
   } catch {
     state.token = tokenFromAddress;
   }
-  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname);
+  // Mantém o endereço compartilhável; restaura links antigos somente no recarregamento validado.
+  const visibleFragment = rawFragment || (TOKEN_PATTERN.test(state.token) ? state.token : "");
+  history.replaceState(TOKEN_PATTERN.test(state.token) ? { linkToken: state.token } : null, "", location.pathname + location.search + (visibleFragment ? `#${visibleFragment}` : ""));
   if (!TOKEN_PATTERN.test(state.token)) return fail("O endereço está incompleto ou inválido.");
   const load = async () => {
     $("retry").disabled = true;
