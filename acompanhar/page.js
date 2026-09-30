@@ -29,9 +29,9 @@
       ? 2
       : status === "Aguardando aprovação"
         ? 3
-        : status === "Em manutenção"
+      : ["Em manutenção", "Garantia em reparo"].includes(status)
           ? 4
-          : ["Pronto para retirada", "Abandonado"].includes(status)
+          : ["Pronto para retirada", "Abandonado", "Garantia pronta para retirada"].includes(status)
             ? 5
             : status === "Finalizado"
               ? 6
@@ -53,6 +53,8 @@
         "Aguardando aprovação":
           "A assistência aguarda a confirmação do orçamento.",
         "Em manutenção": "O serviço aprovado está sendo realizado.",
+        "Garantia em reparo": "A garantia foi aprovada e o reparo está em andamento.",
+        "Garantia pronta para retirada": "O reparo em garantia terminou. Combine a retirada do aparelho com a assistência.",
         "Pronto para retirada":
           "O aparelho está pronto. Combine a retirada com a assistência.",
         Finalizado: "Atendimento concluído e registrado.",
@@ -362,6 +364,8 @@
       "Aguardando técnico": "Próximo passo: a assistência confere a avaliação e informa o orçamento.",
       "Aguardando aprovação": "Sua ação: informe à loja se deseja aprovar o serviço.",
       "Em manutenção": "Próximo passo: aguarde a confirmação de que o aparelho está pronto.",
+      "Garantia em reparo": "Próximo passo: aguarde a conclusão do reparo em garantia.",
+      "Garantia pronta para retirada": "Sua ação: combine a retirada do aparelho com a assistência.",
       "Pronto para retirada": "Sua ação: combine a retirada com a loja. A data de entrega ainda será registrada.",
       Abandonado: "Sua ação: entre em contato com a loja para combinar a retirada.",
       Finalizado: "Guarde o PDF do atendimento para consultar as informações e a garantia, quando aplicável.",

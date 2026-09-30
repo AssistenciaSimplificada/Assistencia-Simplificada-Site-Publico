@@ -30,6 +30,8 @@ body.detail-open{overflow:hidden}.detail{position:fixed;z-index:20;inset:0;overf
 @media(max-width:410px){.card .picture{height:285px}.content{padding:15px 16px 17px}.card-payment .price{font-size:1.55rem}}
 @media(max-width:760px){.best-price{grid-column:1 / -1;text-align:left}.best-seller button{grid-column:1 / -1;width:100%}}
 footer{display:grid;gap:6px;place-items:center}footer strong{color:#42586a;font-size:.68rem;font-weight:750}
+.google-review-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:10px 0;padding:10px 18px;border-radius:9px;background:var(--store-primary,#176bb5);color:var(--store-contrast,#fff);font-size:.85rem;font-weight:750;text-decoration:none}
+.google-review-link:hover{filter:brightness(.9)}.google-review-link[hidden]{display:none}
 
 .hero .catalog-mode{display:inline-flex;margin-top:12px;padding:6px 9px;border:1px solid color-mix(in srgb,var(--store-contrast) 38%,transparent);border-radius:999px;color:var(--store-contrast);font-size:.68rem;letter-spacing:.02em;opacity:.95}
 

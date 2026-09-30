@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const API = "https://catalogo.assistenciasimplificada.site";
+  const API = window.__ASSISTENCIA_CATALOG_CONFIG__.apiUrl;
   const catalogNode = document.querySelector("#catalog");
   const detailNode = document.querySelector("#detail");
   const statusNode = document.querySelector("#status");
@@ -15,6 +15,25 @@
   const mobileSortNode = document.querySelector("#mobile-sort");
   const mobileFilterNodes = [...document.querySelectorAll(".mobile-filter-strip > button")];
   const bestSellerNode = document.querySelector("#best-seller");
+  const googleReviewNode = document.querySelector("#google-review");
+  const googleReviewUrl = input => {
+    try {
+      const url = new URL(String(input || ""));
+      if (url.protocol !== "https:" || url.username || url.password || url.port || url.hash) return "";
+      if (url.hostname === "g.page" && /^\/r\/[A-Za-z0-9_-]+\/review\/?$/.test(url.pathname) && !url.search) return url.href;
+      if (url.hostname === "search.google.com" && url.pathname === "/local/writereview"
+        && /^[A-Za-z0-9_-]+$/.test(url.searchParams.get("placeid") || "") && [...url.searchParams.keys()].length === 1)
+        return url.href;
+    } catch {}
+    return "";
+  };
+  const updateGoogleReview = () => {
+    const url = googleReviewUrl(catalog?.storeReviewUrl);
+    if (!googleReviewNode) return;
+    googleReviewNode.hidden = !url;
+    if (url) googleReviewNode.href = url;
+    else googleReviewNode.removeAttribute("href");
+  };
   const filterToggle = document.querySelector("#toggle-filters");
   filterToggle?.addEventListener("click", () => {
     const expanded = filterToggle.getAttribute("aria-expanded") !== "true";
@@ -449,9 +468,10 @@
     if (item) renderDetail(item);
   }
   async function load() {
-    const [storeCode] = location.hash.slice(1).split("/");
+    const [hashStoreCode] = location.hash.slice(1).split("/");
+    const storeCode = hashStoreCode || window.__ASSISTENCIA_CATALOG_CONFIG__?.storeCode;
     if (!storeCode || storeCode === demoCatalog.storeCode) {
-      catalog = demoCatalog; populateMemoryFilters();
+      catalog = demoCatalog; updateGoogleReview(); populateMemoryFilters();
       applyStoreBranding(); document.querySelector("#store-name").textContent = catalog.storeName; document.querySelector("#store-subtitle").textContent = "Demonstração · dados ilustrativos"; document.querySelector("#total-items").textContent = catalog.items.length; document.querySelector("#ready-items").textContent = catalog.items.filter(item => item.availability !== "order").length; document.querySelector("#order-items").textContent = catalog.items.filter(item => item.availability === "order").length; document.querySelector("#used-items").textContent = catalog.items.filter(item => item.purchaseKind === "Usado").length; document.querySelector("#status").textContent = "Mostruário demonstrativo · dados ilustrativos"; document.querySelector("#catalog-mode").hidden = false; document.querySelector("#hero-description").textContent = "Conheça a experiência da vitrine pública. Os aparelhos abaixo são exemplos e não representam estoque real."; document.title = "Mostruário de vitrine — Assistência Simplificada"; renderBestSeller(); render(); return;
     }
     if (!/^[A-Za-z0-9_-]{12}$/.test(storeCode || "")) throw new Error("link_invalid");
@@ -465,6 +485,7 @@
       if (!body.catalog || !Array.isArray(body.catalog.items)) throw new Error("connection_unavailable");
     } finally { clearTimeout(timeout); }
     catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...item, warranty: displayWarranty(item) }))) };
+    updateGoogleReview();
     populateMemoryFilters();
     document.querySelector("#catalog-mode").hidden = true;
     document.querySelector("#store-subtitle").textContent = "Catálogo de aparelhos";

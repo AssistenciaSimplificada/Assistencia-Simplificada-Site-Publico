@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const API = "https://catalogo.assistenciasimplificada.site";
+  const API = window.__ASSISTENCIA_CATALOG_CONFIG__.apiUrl;
   const [storeCode, token] = location.hash.slice(1).split("/");
   const access = document.querySelector("#access");
   const editor = document.querySelector("#editor");
