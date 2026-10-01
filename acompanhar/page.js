@@ -141,6 +141,7 @@
   };
   const scheduleStatusRefresh = () => {
     clearTimeout(state.statusTimer);
+    if (document.visibilityState === "hidden") return;
     const status = String(state.tracking?.snapshot?.status || "");
     if (["Cancelado", "Rejeitado", "Expirado"].includes(status)) return;
     state.statusTimer = setTimeout(async () => {
@@ -700,6 +701,7 @@
     state.signatureDrawn = false;
   });
   document.addEventListener?.("visibilitychange", () => {
+    if (document.visibilityState === "hidden") clearTimeout(state.statusTimer);
     if (document.visibilityState === "visible" && state.tracking && !state.loading)
       void load();
   });

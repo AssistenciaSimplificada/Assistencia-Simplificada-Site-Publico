@@ -226,7 +226,7 @@
     const free = Math.max(1, Number(item.interestFreeInstallments || 1));
     return `${item.discountPriceCents || cashOffer ? `<div class="offer-heading"><small class="previous-price">${money(item.priceCents)}</small>${offerPercent(item) ? `<span class="offer-badge">-${offerPercent(item)}%</span>` : ""}</div>` : ""}<div class="price">${money(cashPrice(item))}</div>${cashOffer ? `<strong class="cash-offer">✨ ${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}<span class="card-price">💳 ${money(base)} no cartão</span><span class="installment-line">Até ${free}x de ${money(Math.ceil(base/free))} sem juros</span>${item.interestInstallment ? `<span class="installment-line muted">Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}${paymentMethods(item) ? `<small class="payment-methods">${esc(paymentMethods(item))}</small>` : ""}`;
   };
-  const card = item => `<article class="card ${item.featured ? "featured" : ""} ${item.availability === "unavailable" ? "unavailable" : ""}" data-code="${esc(item.code)}" tabindex="0"><div class="picture"><img loading="lazy" src="${imageUrl(item.imageUrls[0])}" alt="${esc(item.title)}"></div><div class="content"><div class="tags"><span>📱 ${esc(displayCondition(item.purchaseKind))}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.storage ? `<span>💾 ${esc(formatCapacity(item.storage))}</span>` : ""}${item.availability !== "unavailable" && Number(item.stockQuantity || 1) > 1 ? `<span>📦 ${item.stockQuantity} unidades</span>` : ""}${item.batteryHealth ? `<span>🔋 ${esc(formatBattery(item.batteryHealth))}</span>` : ""}</div><h2>${esc(item.title)}</h2><p>${item.color ? `🎨 ${esc(item.color)}` : ""}${item.color && item.condition && item.condition !== item.purchaseKind ? " • " : ""}${item.condition && item.condition !== item.purchaseKind ? esc(item.condition) : ""}</p>${item.availability === "order" ? `<small class="order-lead">🚚 Prazo: ${esc(item.orderLeadTime || "consulte a loja")}</small>` : ""}<div class="card-payment">${cardPaymentHtml(item)}</div></div></article>`;
+  const card = item => `<article class="card ${item.featured ? "featured" : ""} ${item.availability === "unavailable" ? "unavailable" : ""}" data-code="${esc(item.code)}" tabindex="0"><div class="picture"><img loading="lazy" decoding="async" src="${imageUrl(item.imageUrls[0])}" alt="${esc(item.title)}"></div><div class="content"><div class="tags"><span>📱 ${esc(displayCondition(item.purchaseKind))}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.storage ? `<span>💾 ${esc(formatCapacity(item.storage))}</span>` : ""}${item.availability !== "unavailable" && Number(item.stockQuantity || 1) > 1 ? `<span>📦 ${item.stockQuantity} unidades</span>` : ""}${item.batteryHealth ? `<span>🔋 ${esc(formatBattery(item.batteryHealth))}</span>` : ""}</div><h2>${esc(item.title)}</h2><p>${item.color ? `🎨 ${esc(item.color)}` : ""}${item.color && item.condition && item.condition !== item.purchaseKind ? " • " : ""}${item.condition && item.condition !== item.purchaseKind ? esc(item.condition) : ""}</p>${item.availability === "order" ? `<small class="order-lead">🚚 Prazo: ${esc(item.orderLeadTime || "consulte a loja")}</small>` : ""}<div class="card-payment">${cardPaymentHtml(item)}</div></div></article>`;
   function renderBestSeller() {
     const item = catalog.items.filter(entry => entry.availability !== "unavailable").sort((a,b) => Number(b.featured)-Number(a.featured) || Number(b.salesCount || 0)-Number(a.salesCount || 0))[0];
     if (!item) { bestSellerNode.hidden = true; return; }
@@ -235,13 +235,21 @@
     bestSellerNode.innerHTML = `<div class="best-thumb"><img src="${imageUrl(item.imageUrls[0])}" alt=""></div><div class="best-copy"><small>${hasSales ? "MAIS VENDIDO DA LOJA" : "DESTAQUE DA LOJA"}</small><strong>${esc(item.title)}</strong><span>${item.availability === "order" ? "🚚" : "✓"} ${availabilityLabel(item)} • 📱 ${esc(displayCondition(item.purchaseKind))}${item.storage ? ` • 💾 ${esc(formatCapacity(item.storage))}` : ""}${item.color ? ` • 🎨 ${esc(item.color)}` : ""}</span></div><div class="best-price"><small>A partir de</small><strong>${money(cashPrice(item))}</strong></div><button type="button" data-code="${esc(item.code)}">Ver aparelho</button>`;
     bestSellerNode.querySelector("button").addEventListener("click", () => { location.hash = `${catalog.storeCode}/${productRouteKey(item)}`; render(); });
   }
-  const bindCards = () => document.querySelectorAll(".card").forEach(node => {
-    const open = () => { const item = catalog.items.find(entry => entry.code === node.dataset.code); if (item) location.hash = `${catalog.storeCode}/${productRouteKey(item)}`; render(); };
+  const bindCards = () => {
+    const byCode = new Map(catalog.items.map(item => [String(item.code), item]));
+    document.querySelectorAll(".card").forEach(node => {
+    const open = () => { const item = byCode.get(node.dataset.code); if (item) location.hash = `${catalog.storeCode}/${productRouteKey(item)}`; render(); };
     node.addEventListener("click", open); node.addEventListener("keydown", event => { if (event.key === "Enter") open(); });
-  });
+    });
+  };
+  const searchText = new WeakMap();
+  const searchable = item => {
+    if (!searchText.has(item)) searchText.set(item, [item.title,item.brand,item.model,item.storage,item.ram,item.color].join(" ").toLocaleLowerCase("pt-BR"));
+    return searchText.get(item);
+  };
   function filtered() {
     const query = searchNode.value.trim().toLocaleLowerCase("pt-BR");
-    const items = catalog.items.filter(item => (!kindNode.value || item.purchaseKind === kindNode.value) && (!availabilityNode.value || item.availability === availabilityNode.value) && (!storageNode.value || String(item.storage) === storageNode.value) && (!ramNode.value || String(item.ram) === ramNode.value) && (!query || [item.title,item.brand,item.model,item.storage,item.ram,item.color].join(" ").toLocaleLowerCase("pt-BR").includes(query)));
+    const items = catalog.items.filter(item => (!kindNode.value || item.purchaseKind === kindNode.value) && (!availabilityNode.value || item.availability === availabilityNode.value) && (!storageNode.value || String(item.storage) === storageNode.value) && (!ramNode.value || String(item.ram) === ramNode.value) && (!query || searchable(item).includes(query)));
     const availabilityRank = item => item.availability === "ready" ? 0 : item.availability === "order" ? 1 : 2;
     return items.sort((a,b) => sortNode.value === "lowest" ? salePrice(a)-salePrice(b) : sortNode.value === "highest" ? salePrice(b)-salePrice(a) : sortNode.value === "ram" ? (capacityNumber(b.ram)-capacityNumber(a.ram) || capacityNumber(b.storage)-capacityNumber(a.storage) || availabilityRank(a)-availabilityRank(b)) : sortNode.value === "recent" ? b.updatedAt.localeCompare(a.updatedAt) : Number(b.featured)-Number(a.featured) || availabilityRank(a)-availabilityRank(b) || Number(b.salesCount || 0)-Number(a.salesCount || 0) || b.updatedAt.localeCompare(a.updatedAt));
   }
@@ -254,8 +262,9 @@
     catalogNode.innerHTML = items.length
       ? `${newItems.length ? '<h2 class="catalog-group-title">Aparelhos novos</h2>' : ""}${newItems.map(card).join("")}${usedItems.length ? '<h2 class="catalog-group-title">Aparelhos seminovos</h2>' : ""}${usedItems.map(card).join("")}`
       : '<div class="empty"><h2>Nenhum aparelho encontrado</h2><p>Tente outra busca ou fale com a loja.</p></div>';
+    const byCode = new Map(items.map(item => [String(item.code), item]));
     catalogNode.querySelectorAll(".card").forEach(node => {
-      const item = items.find(entry => entry.code === node.dataset.code);
+      const item = byCode.get(node.dataset.code);
       if (item?.purchaseKind === "Novo" && item.payJoyEnabled !== false) node.querySelector(".card-payment")?.insertAdjacentHTML("beforeend", '<small class="payjo-card-note">🧾 Boleto parcelado via PayJoy · consulte condições</small>');
     });
     bindCards();
