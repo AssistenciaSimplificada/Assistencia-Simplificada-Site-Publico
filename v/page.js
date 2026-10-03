@@ -43,10 +43,16 @@
   });
   let catalog = null;
   let activePhotoViewer = null;
+  let photoTrigger = null;
+  let helperTrigger = null;
+  let detailCode = null;
   const closePhotoViewer = () => {
+    const wasOpen = Boolean(activePhotoViewer);
     activePhotoViewer?.remove();
     activePhotoViewer = null;
     document.body.classList.remove("photo-viewer-open");
+    if (wasOpen && photoTrigger?.isConnected) photoTrigger.focus();
+    photoTrigger = null;
   };
   const money = value => new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" }).format(Number(value || 0) / 100);
   const salePrice = item => Number(item.discountPriceCents || item.priceCents);
@@ -187,9 +193,15 @@
     };
     return answers[key] || "Pergunte à loja para confirmar esta informação.";
   };
-  const closeDeviceHelper = () => document.querySelector(".device-helper-modal")?.remove();
+  const closeDeviceHelper = () => {
+    const modal = document.querySelector(".device-helper-modal");
+    modal?.remove();
+    if (modal && helperTrigger?.isConnected) helperTrigger.focus();
+    helperTrigger = null;
+  };
   const openDeviceHelper = item => {
     closeDeviceHelper();
+    helperTrigger = document.activeElement;
     const modal = document.createElement("div"); modal.className = "device-helper-modal"; modal.setAttribute("role", "dialog"); modal.setAttribute("aria-modal", "true"); modal.setAttribute("aria-label", `Ajuda sobre ${item.title}`);
     modal.innerHTML = `<section class="device-helper-card"><header><div><small>AJUDA RÁPIDA</small><h2>Assistente da vitrine</h2><p>Respostas automáticas sobre <strong>${esc(item.title)}</strong>, usando as informações deste anúncio.</p></div><button type="button" data-helper-close aria-label="Fechar ajuda">×</button></header><div class="device-helper-questions">${helperQuestions.map(([key,label]) => `<button type="button" data-helper-question="${key}">${label}</button>`).join("")}</div><div class="device-helper-answer" aria-live="polite"><strong>Escolha uma dúvida acima</strong><p>Você verá uma explicação curta e fácil de entender.</p></div><small class="device-helper-note">Esta ajuda é automática. Para confirmar preço, prazo, estoque ou condições, fale com a loja.</small></section>`;
     const answer = modal.querySelector(".device-helper-answer");
@@ -254,6 +266,8 @@
     return items.sort((a,b) => sortNode.value === "lowest" ? salePrice(a)-salePrice(b) : sortNode.value === "highest" ? salePrice(b)-salePrice(a) : sortNode.value === "ram" ? (capacityNumber(b.ram)-capacityNumber(a.ram) || capacityNumber(b.storage)-capacityNumber(a.storage) || availabilityRank(a)-availabilityRank(b)) : sortNode.value === "recent" ? b.updatedAt.localeCompare(a.updatedAt) : Number(b.featured)-Number(a.featured) || availabilityRank(a)-availabilityRank(b) || Number(b.salesCount || 0)-Number(a.salesCount || 0) || b.updatedAt.localeCompare(a.updatedAt));
   }
   function renderList() {
+    const restoreCard = !detailNode.hidden;
+    closeDeviceHelper();
     closePhotoViewer();
     detailNode.hidden = true; document.body.classList.remove("detail-open"); catalogNode.hidden = false; bestSellerNode.hidden = !catalog.items.length; document.querySelector(".toolbar").hidden = false;
     const items = filtered(); const availableCount = items.filter(item => item.availability !== "unavailable").reduce((sum,item) => sum + Number(item.stockQuantity || 1), 0); const unavailableCount = items.filter(item => item.availability === "unavailable").length; statusNode.textContent = `${availableCount} aparelho${availableCount === 1 ? "" : "s"} ${availableCount === 1 ? "disponível" : "disponíveis"}${unavailableCount ? ` · ${unavailableCount} ${unavailableCount === 1 ? "indisponível" : "indisponíveis"}` : ""}`;
@@ -268,13 +282,18 @@
       if (item?.purchaseKind === "Novo" && item.payJoyEnabled !== false) node.querySelector(".card-payment")?.insertAdjacentHTML("beforeend", '<small class="payjo-card-note">🧾 Boleto parcelado via PayJoy · consulte condições</small>');
     });
     bindCards();
+    if (restoreCard && detailCode !== null)
+      catalogNode.querySelector(`.card[data-code="${CSS.escape(String(detailCode))}"]`)?.focus();
+    detailCode = null;
   }
   const updateMobileFilterState = () => mobileFilterNodes.forEach(button => button.classList.toggle("active", button.dataset.kind === kindNode.value && button.dataset.availability === availabilityNode.value));
   function closeDetail() {
+    closeDeviceHelper();
     closePhotoViewer();
     location.hash = catalog.storeCode;
   }
   function renderDetail(item) {
+    detailCode = item.code;
     detailNode.hidden = false; document.body.classList.add("detail-open");
     const variants = (item.variants || []).filter(variant => variant.imageUrls?.length);
     let selectedVariant = variants[0] || null;
@@ -416,6 +435,7 @@
     });
     const openPhotoViewer = () => {
       closePhotoViewer();
+      photoTrigger = document.activeElement;
       let index = Math.max(0, images.findIndex(source => new URL(imageUrl(source), location.href).href === mainImage.src));
       let level = 1, panX = 0, panY = 0, pointerStart = null, pinchDistance = 0, pinchLevel = 1;
       const viewer = document.createElement("div");
@@ -525,10 +545,22 @@
   window.addEventListener("hashchange", render);
   detailNode.addEventListener("click", event => { if (event.target === detailNode) closeDetail(); });
   document.addEventListener("keydown", event => {
-    if (activePhotoViewer && event.key === "Escape") { closePhotoViewer(); return; }
+    const helper = document.querySelector(".device-helper-modal");
+    const modal = helper || activePhotoViewer || (!detailNode.hidden ? detailNode : null);
+    if (modal && event.key === "Tab") {
+      const controls = [...modal.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => element.tabIndex >= 0 && element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
+      const first = controls[0], last = controls.at(-1);
+      if (first && (event.shiftKey ? document.activeElement === first || !controls.includes(document.activeElement) : document.activeElement === last || !controls.includes(document.activeElement))) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
+    }
+    if (helper && event.key === "Escape") { event.preventDefault(); closeDeviceHelper(); return; }
+    if (activePhotoViewer && event.key === "Escape") { event.preventDefault(); closePhotoViewer(); return; }
     if (activePhotoViewer && event.key === "ArrowLeft") activePhotoViewer.querySelector('[data-action="previous"]').click();
     if (activePhotoViewer && event.key === "ArrowRight") activePhotoViewer.querySelector('[data-action="next"]').click();
-    if (event.key === "Escape" && !detailNode.hidden) closeDetail();
+    if (event.key === "Escape" && !detailNode.hidden) { event.preventDefault(); closeDetail(); }
   });
   document.querySelector("#share").addEventListener("click", async () => { const title = `Vitrine — ${catalog?.storeName || "Loja"}`; const text = `Confira os aparelhos disponíveis na vitrine de ${catalog?.storeName || "nossa loja"}.`; const url = catalogShareUrl(); try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
   const loadCatalog = async () => {
