@@ -16,6 +16,7 @@
   <script src="/portal-theme.js?v=10.4.0-20260926"></script>
   <script src="/tecnico/config.js?v=10.4.0-20260926" defer></script>
   <script src="/tecnico/page.js?v=10.4.0-20260926" defer></script>
+  <link rel="stylesheet" href="/identity-tokens.css">
 </head>
 <body class="technician-portal">
   <main>
@@ -69,7 +70,7 @@
           <div><span class="panel-kicker">PAINEL DA AVALIAÇÃO</span><h2 id="evaluation-progress-title">Progresso do preenchimento</h2></div>
           <strong id="completion-percent">0%</strong>
         </div>
-        <progress id="completion-chart" max="100" value="0">0%</progress>
+        <progress aria-labelledby="evaluation-progress-title" id="completion-chart" max="100" value="0">0%</progress>
         <div class="evaluation-metrics">
           <div><span>Serviços</span><strong id="services-count">0</strong></div>
           <div><span>Concluídos</span><strong id="services-complete">0</strong></div>

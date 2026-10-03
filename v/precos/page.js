@@ -14,6 +14,8 @@
   const countNode = document.querySelector("#count");
   const messageNode = document.querySelector("#message");
   let pin = "";
+  let saving = false;
+  let opening = false;
   let items = [];
   let original = new Map();
   const moneyInput = cents => cents == null ? "" : (Number(cents) / 100).toFixed(2);
@@ -31,11 +33,11 @@
     const before = original.get(item.code);
     return before && (before.priceCents !== item.priceCents || before.discountPriceCents !== item.discountPriceCents || before.interestFreeInstallments !== item.interestFreeInstallments || before.interestMaxInstallments !== item.interestMaxInstallments);
   };
-  const originalValues = item => ({ priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments });
+  const originalValues = item => ({ priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments, updatedAt:item.updatedAt });
   const updateCount = () => {
     const total = items.filter(changed).length;
     countNode.textContent = `${total} alteraç${total === 1 ? "ão" : "ões"}`;
-    saveNode.disabled = total === 0;
+    saveNode.disabled = saving || total === 0;
   };
   const render = () => {
     const query = searchNode.value.trim().toLocaleLowerCase("pt-BR");
@@ -77,7 +79,7 @@
     document.querySelector("#store-name").textContent = body.storeName;
     const banner = document.querySelector("#editor-store-banner");
     const bannerImage = document.querySelector("#editor-store-banner-image");
-    const bannerUrl = typeof body.bannerUrl === "string" && /^\/media\/[A-Za-z0-9_-]{12}\/banner\.webp\?v=[a-f0-9]{12}$/.test(body.bannerUrl) ? body.bannerUrl : "";
+    const bannerUrl = typeof body.bannerUrl === "string" && /^\/media\/[A-Za-z0-9_-]{12}\/(?:banner\.webp\?v=[a-f0-9]{12}|branding\/banner-[a-f0-9]{64}\.(?:webp|png|jpg))$/.test(body.bannerUrl) ? body.bannerUrl : "";
     banner.hidden = !bannerUrl;
     if (bannerUrl) { bannerImage.src = imageUrl(bannerUrl); bannerImage.alt = `Banner da ${body.storeName}`; bannerImage.onerror = () => { banner.hidden = true; }; }
     else bannerImage.removeAttribute("src");
@@ -85,8 +87,13 @@
     access.hidden = true; editor.hidden = false; render();
   };
   form.addEventListener("submit", async event => {
-    event.preventDefault(); errorNode.textContent = ""; pin = pinNode.value.replace(/\D/g, "");
+    event.preventDefault();
+    if (opening) return;
+    opening = true;
+    form.inert = true;
+    errorNode.textContent = ""; pin = pinNode.value.replace(/\D/g, "");
     try { await open(); } catch (error) { errorNode.textContent = error.message === "editor_locked" ? "Muitas tentativas. Aguarde 15 minutos." : error.message === "editor_expired" ? "Este acesso venceu. Peça um novo link à loja." : "Link ou código incorreto."; }
+    finally { opening = false; form.inert = false; }
   });
   searchNode.addEventListener("input", render);
   copyNamesNode.addEventListener("click", async () => {
@@ -96,20 +103,31 @@
     catch { notify("Não foi possível copiar. Selecione os nomes manualmente.", true); }
   });
   saveNode.addEventListener("click", async () => {
-    const changes = items.filter(changed);
+    if (saving) return;
+    const changes = items.filter(changed).map(item => ({ ...item }));
     if (!changes.length) return;
     for (const item of changes) {
       if (!Number.isInteger(item.priceCents) || item.priceCents <= 0) return notify(`Informe um preço válido para ${item.title}.`, true);
       if (item.discountPriceCents != null && (!Number.isInteger(item.discountPriceCents) || item.discountPriceCents <= 0 || item.discountPriceCents >= item.priceCents)) return notify(`O preço promocional de ${item.title} deve ser menor que o normal.`, true);
       if (!Number.isInteger(item.interestFreeInstallments) || item.interestFreeInstallments < 1 || item.interestFreeInstallments > item.paymentMaximumInstallments || !Number.isInteger(item.interestMaxInstallments) || item.interestMaxInstallments < item.interestFreeInstallments || item.interestMaxInstallments > item.paymentMaximumInstallments || (item.interestMaxInstallments > item.interestFreeInstallments && !item.availableWithInterest.includes(item.interestMaxInstallments))) return notify(`Revise o parcelamento de ${item.title}.`, true);
     }
+    saving = true;
     saveNode.disabled = true; saveNode.textContent = "Salvando...";
     try {
-      const result = await request("/price-editor/update", { storeCode, token, pin, changes:changes.map(item => ({ itemCode:item.code, priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments })) });
-      original = new Map(items.map(item => [item.code, originalValues(item)]));
+      const result = await request("/price-editor/update", { storeCode, token, pin, changes:changes.map(item => ({ itemCode:item.code, expectedUpdatedAt:original.get(item.code)?.updatedAt, priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments })) });
+      for (const item of changes) {
+        const revision = result.items?.find(entry => entry.itemCode === item.code)?.updatedAt || result.updatedAt || item.updatedAt;
+        original.set(item.code, originalValues({ ...item, updatedAt:revision }));
+        const current = items.find(entry => entry.code === item.code);
+        if (current) current.updatedAt = revision;
+      }
       render(); notify(`${result.updated} aparelho${result.updated === 1 ? " atualizado" : "s atualizados"} com sucesso.`);
-    } catch (error) { notify(error.message === "editor_expired" ? "Este acesso venceu." : "Não foi possível salvar agora. Tente novamente.", true); }
-    finally { saveNode.textContent = "Salvar alterações"; updateCount(); }
+    } catch (error) {
+      notify(error.message === "catalog_conflict" ? "Este aparelho foi alterado em outra sessão. Suas alterações continuam na tela; reabra o link para conferir os valores atuais antes de salvar." : error.message === "editor_expired" ? "Este acesso venceu." : "Não foi possível salvar agora. Tente novamente.", true);
+      if (error.message === "catalog_conflict") clearTimeout(notify.timer);
+    }
+    finally { saving = false; saveNode.textContent = "Salvar alterações"; updateCount(); }
   });
+  window.addEventListener("beforeunload", event => { if (saving || items.some(changed)) { event.preventDefault(); event.returnValue = ""; } });
   if (!/^[A-Za-z0-9_-]{12}$/.test(storeCode || "") || !/^[A-Za-z0-9_-]{40,60}$/.test(token || "")) { form.hidden = true; errorNode.textContent = "Este link está incompleto. Peça um novo endereço à loja."; }
 })();

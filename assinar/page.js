@@ -10,9 +10,12 @@
     fail("Este endereço está incompleto. Solicite um novo link à loja.");
     return;
   }
-  history.replaceState(null, "", location.pathname + location.search);
+  history.replaceState(null, "", location.pathname + location.search + "#" + token);
+  window.addEventListener("beforeunload", event => { if (!completed && (submitting || drawn)) { event.preventDefault(); event.returnValue = ""; } });
   const canvas = $("signature");
   const ctx = canvas.getContext("2d");
+  let submitting = false;
+  let completed = false;
   let drawing = false;
   let drawn = false;
   const point = (event) => {
@@ -21,6 +24,7 @@
       y: (event.clientY - rect.top) * canvas.height / rect.height };
   };
   canvas.addEventListener("pointerdown", (event) => {
+    if (submitting || completed) return;
     drawing = true; show("submit-error", false); canvas.setPointerCapture(event.pointerId);
     const p = point(event); ctx.beginPath(); ctx.moveTo(p.x, p.y);
   });
@@ -32,7 +36,7 @@
   const stop = () => { drawing = false; };
   canvas.addEventListener("pointerup", stop);
   canvas.addEventListener("pointercancel", stop);
-  $("clear").addEventListener("click", () => { ctx.clearRect(0, 0, canvas.width, canvas.height); drawn = false; });
+  $("clear").addEventListener("click", () => { if (submitting || completed) return; ctx.clearRect(0, 0, canvas.width, canvas.height); drawn = false; });
   async function request(action, extra = {}) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -57,16 +61,20 @@
   }).catch((error) => fail(error instanceof Error ? error.message : "Não foi possível abrir este link. Verifique sua conexão ou solicite um novo à loja."));
   $("signature-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submitting || completed) return;
     show("submit-error", false);
     if (!drawn) { $("submit-error").textContent = "Desenhe sua assinatura antes de continuar."; show("submit-error", true); return; }
     if (!$("accept").checked) { $("submit-error").textContent = "Confirme a leitura do documento."; show("submit-error", true); return; }
+    submitting = true;
+    $("signature-form").inert = true;
     $("submit").disabled = true;
     try {
       await request("sign", { accepted: true, signature: canvas.toDataURL("image/png") });
+      completed = true;
       show("document", false); show("success", true);
     } catch (error) {
       $("submit-error").textContent = error instanceof Error ? error.message : "Não foi possível assinar.";
       show("submit-error", true);
-    } finally { $("submit").disabled = false; }
+    } finally { submitting = false; $("signature-form").inert = false; $("submit").disabled = completed; }
   });
 })();

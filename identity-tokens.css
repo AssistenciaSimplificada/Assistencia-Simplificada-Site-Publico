@@ -1,0 +1,19 @@
+/* Shared product conventions; store colors and portal layouts remain contextual. */
+:root {
+  --product-font: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --product-cyan: #30c7db;
+  --product-gold: #ead008;
+  --product-focus: #078da7;
+  --product-control-radius: 8px;
+  --product-motion: 200ms;
+}
+body { font-family: var(--product-font); }
+button, input, textarea, select { font-family: inherit; }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--product-focus);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
