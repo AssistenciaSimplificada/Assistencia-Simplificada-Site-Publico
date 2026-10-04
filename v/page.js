@@ -263,6 +263,10 @@
     const query = searchNode.value.trim().toLocaleLowerCase("pt-BR");
     const items = catalog.items.filter(item => (!kindNode.value || item.purchaseKind === kindNode.value) && (!availabilityNode.value || item.availability === availabilityNode.value) && (!storageNode.value || String(item.storage) === storageNode.value) && (!ramNode.value || String(item.ram) === ramNode.value) && (!query || searchable(item).includes(query)));
     const availabilityRank = item => item.availability === "ready" ? 0 : item.availability === "order" ? 1 : 2;
+    if (window.assistenciaDiscovery) {
+      const visible = items.filter(window.assistenciaDiscovery.filter);
+      items.splice(0, items.length, ...visible);
+    }
     return items.sort((a,b) => sortNode.value === "lowest" ? salePrice(a)-salePrice(b) : sortNode.value === "highest" ? salePrice(b)-salePrice(a) : sortNode.value === "ram" ? (capacityNumber(b.ram)-capacityNumber(a.ram) || capacityNumber(b.storage)-capacityNumber(a.storage) || availabilityRank(a)-availabilityRank(b)) : sortNode.value === "recent" ? b.updatedAt.localeCompare(a.updatedAt) : Number(b.featured)-Number(a.featured) || availabilityRank(a)-availabilityRank(b) || Number(b.salesCount || 0)-Number(a.salesCount || 0) || b.updatedAt.localeCompare(a.updatedAt));
   }
   function renderList() {
@@ -282,6 +286,7 @@
       if (item?.purchaseKind === "Novo" && item.payJoyEnabled !== false) node.querySelector(".card-payment")?.insertAdjacentHTML("beforeend", '<small class="payjo-card-note">🧾 Boleto parcelado via PayJoy · consulte condições</small>');
     });
     bindCards();
+    window.assistenciaDiscovery?.decorate();
     if (restoreCard && detailCode !== null)
       catalogNode.querySelector(`.card[data-code="${CSS.escape(String(detailCode))}"]`)?.focus();
     detailCode = null;
@@ -490,11 +495,18 @@
   }
   function render() {
     if (!catalog) return;
+    window.assistenciaDiscovery?.init({ catalog, api: API, render });
+    mobileSortNode.value = sortNode.value;
+    updateMobileFilterState();
+    syncRamFilterVisibility();
     document.querySelector("#ready-items").textContent = catalog.items.filter(entry => entry.availability === "ready").reduce((sum,item) => sum + Number(item.stockQuantity || 1), 0);
     const [, itemCode] = location.hash.slice(1).split("/");
     const item = itemCode && catalog.items.find(entry => entry.code === itemCode || entry.variantCodes?.includes(itemCode) || productRouteKey(entry) === itemCode);
     renderList();
-    if (item) renderDetail(item);
+    if (item) {
+      renderDetail(item);
+      window.assistenciaDiscovery?.detail(item);
+    }
   }
   async function load() {
     const [hashStoreCode] = location.hash.slice(1).split("/");
@@ -545,6 +557,7 @@
   window.addEventListener("hashchange", render);
   detailNode.addEventListener("click", event => { if (event.target === detailNode) closeDetail(); });
   document.addEventListener("keydown", event => {
+    if (document.querySelector(".discovery-dialog[open]")) return;
     const helper = document.querySelector(".device-helper-modal");
     const modal = helper || activePhotoViewer || (!detailNode.hidden ? detailNode : null);
     if (modal && event.key === "Tab") {

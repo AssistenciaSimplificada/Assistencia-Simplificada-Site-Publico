@@ -115,6 +115,7 @@
     }
   };
   const fail = (message, retryable = false) => {
+    document.querySelector("#customer-summary")?.remove();
     clearTimeout(state.expiryTimer);
     clearTimeout(state.statusTimer);
     state.tracking = null;
@@ -256,6 +257,7 @@
     const hasCurrentPickup = Number.isFinite(deliveredAt) &&
       ["Finalizado", "Cancelado", "Rejeitado", "Abandonado"].includes(snapshot.status);
     renderBranding(tracking);
+    window.assistenciaCustomerSummary?.(tracking);
     const reviewUrl = googleReviewUrl(snapshot.storeBranding?.reviewUrl);
     if (hasCurrentPickup && reviewUrl && !reviewClicked()) {
       $("evaluation-link").href = reviewUrl;
@@ -521,7 +523,7 @@
           dot.className = "timeline-dot";
           const copy = document.createElement("div");
           const strong = document.createElement("strong");
-          strong.textContent = item.status;
+          strong.textContent = { "Aguardando técnico": "Avaliação técnica em andamento", "Aguardando aprovação": "Orçamento disponível para aprovação", "Em manutenção": "Reparo em andamento", "Pronto para retirada": "Testes concluídos: combine a retirada", "Finalizado": "Atendimento concluído", "Cancelado": "Atendimento cancelado", "Rejeitado": "Orçamento não aprovado" }[item.status] || item.status;
           const when = document.createElement("span");
           when.textContent = date(item.changedAt);
           copy.append(strong, when);
