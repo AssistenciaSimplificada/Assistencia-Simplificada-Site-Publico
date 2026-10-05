@@ -1,6 +1,9 @@
 (() => {
   "use strict";
-  const API = window.__ASSISTENCIA_CATALOG_CONFIG__.apiUrl;
+  let bootstrap;
+  try { bootstrap = JSON.parse(document.querySelector("#catalog-bootstrap")?.textContent || "null"); } catch { /* Fall back to the public API. */ }
+  const config = window.__ASSISTENCIA_CATALOG_CONFIG__ || bootstrap?.config;
+  const API = config.apiUrl;
   const catalogNode = document.querySelector("#catalog");
   const detailNode = document.querySelector("#detail");
   const statusNode = document.querySelector("#status");
@@ -509,20 +512,24 @@
   }
   async function load() {
     const [hashStoreCode] = location.hash.slice(1).split("/");
-    const storeCode = hashStoreCode || window.__ASSISTENCIA_CATALOG_CONFIG__?.storeCode;
+    const storeCode = hashStoreCode || config?.storeCode;
     if (!storeCode || storeCode === demoCatalog.storeCode) {
       catalog = demoCatalog; updateGoogleReview(); populateMemoryFilters();
       applyStoreBranding(); document.querySelector("#store-name").textContent = catalog.storeName; document.querySelector("#store-subtitle").textContent = "Demonstração · dados ilustrativos"; document.querySelector("#total-items").textContent = catalog.items.length; document.querySelector("#ready-items").textContent = catalog.items.filter(item => item.availability !== "order").length; document.querySelector("#order-items").textContent = catalog.items.filter(item => item.availability === "order").length; document.querySelector("#used-items").textContent = catalog.items.filter(item => item.purchaseKind === "Usado").length; document.querySelector("#status").textContent = "Mostruário demonstrativo · dados ilustrativos"; document.querySelector("#catalog-mode").hidden = false; document.querySelector("#hero-description").textContent = "Conheça a experiência da vitrine pública. Os aparelhos abaixo são exemplos e não representam estoque real."; document.title = "Mostruário de vitrine — Assistência Simplificada"; renderBestSeller(); render(); return;
     }
     if (!/^[A-Za-z0-9_-]{12}$/.test(storeCode || "")) throw new Error("link_invalid");
+    let body = bootstrap?.catalog?.storeCode === storeCode && Array.isArray(bootstrap.catalog.items)
+      ? { catalog: bootstrap.catalog } : null;
+    bootstrap = null;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
-    let body;
     try {
+      if (!body) {
       const response = await fetch(`${API}/public/${encodeURIComponent(storeCode)}?v=${Date.now()}`, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error(response.status === 404 ? "not_found" : response.status === 403 ? "store_unavailable" : "connection_unavailable");
       body = await response.json();
       if (!body.catalog || !Array.isArray(body.catalog.items)) throw new Error("connection_unavailable");
+      }
     } finally { clearTimeout(timeout); }
     catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...item, warranty: displayWarranty(item) }))) };
     updateGoogleReview();

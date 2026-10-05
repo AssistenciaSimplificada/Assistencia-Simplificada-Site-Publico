@@ -28,17 +28,28 @@
     }
     addText(section, "h2", "Documentos do atendimento");
     const documents = (Array.isArray(snapshot.documents) ? snapshot.documents : []).slice(0, 3);
+    let availableDocuments = 0;
     for (const documentInfo of documents) {
-      if (!["quote", "receipt", "warranty"].includes(documentInfo.kind) || !/^data:application\/pdf;base64,JVBERi0[A-Za-z0-9+/=]+$/.test(String(documentInfo.dataUrl)) || documentInfo.dataUrl.length > 670000) continue;
+      const validPdf = (info) => /^data:application\/pdf;base64,JVBERi0[A-Za-z0-9+/=]+$/.test(String(info?.dataUrl)) && info.dataUrl.length <= 670000;
+      if (!["quote", "receipt", "warranty"].includes(documentInfo.kind) || !validPdf(documentInfo) && documentInfo.deferred !== true) continue;
+      availableDocuments++;
       const button = document.createElement("button");button.type = "button";button.textContent = `Baixar ${String(documentInfo.label).slice(0, 120)}`;
-      button.addEventListener("click", () => {
+      const label = button.textContent;
+      const feedback = document.createElement("p");feedback.setAttribute("role", "status");feedback.hidden = true;
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        button.disabled = true;button.textContent = "Preparando documento…";feedback.hidden = true;
         try {
-          const decoded = atob(documentInfo.dataUrl.split(",")[1]); const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
-          const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = String(documentInfo.fileName || "documento.pdf").replace(/[/\\]/g, "_"); anchor.click();setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } catch { addText(section, "p", "Não foi possível baixar este documento. Solicite uma cópia à loja."); }
-      });section.append(button);
+          const current = documentInfo.deferred === true ? await window.assistenciaCustomerDocument(documentInfo.kind) : documentInfo;
+          if (!button.isConnected || document.querySelector("#tracking").hidden) return;
+          if (!validPdf(current)) throw new Error("Não foi possível preparar este documento. Solicite uma cópia à loja.");
+          const decoded = atob(current.dataUrl.split(",")[1]); const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
+          const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = String(current.fileName || "documento.pdf").replace(/[/\\]/g, "_"); anchor.click();setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) { feedback.textContent = error.message || "Não foi possível baixar este documento. Tente novamente ou solicite uma cópia à loja.";feedback.hidden = false; }
+        finally { button.disabled = false;button.textContent = label; }
+      });section.append(button, feedback);
     }
-    if (!documents.length) addText(section, "p", "Os documentos aparecem aqui depois que a loja os gerar e sincronizar. Você também pode solicitar uma cópia diretamente à loja.");
+    if (!availableDocuments) addText(section, "p", "Os documentos aparecem aqui depois que a loja os gerar e sincronizar. Você também pode solicitar uma cópia diretamente à loja.");
     if (snapshot.documentsUnavailable?.length) addText(section, "p", "Alguns documentos precisam ser atualizados ou enviados diretamente pela loja.");
     const firstCard = document.querySelector("#tracking .status-card") || document.querySelector("#tracking > section");
     if (firstCard) firstCard.after(section); else document.querySelector("#tracking").prepend(section);

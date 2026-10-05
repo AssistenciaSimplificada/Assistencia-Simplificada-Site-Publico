@@ -1,1 +1,0 @@
-import{r as e}from"./framework-DTZGTDtF.js?v=11.9.0";import{t}from"./link-C2j02BlJ.js?v=11.9.0";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

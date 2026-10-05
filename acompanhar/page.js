@@ -150,7 +150,7 @@
       else scheduleStatusRefresh();
     }, 60_000);
   };
-  const api = async (action = "read", decision = "", signature = null, note = "") => {
+  const api = async (action = "read", decision = "", signature = null, note = "", documentKind = "") => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
@@ -165,6 +165,7 @@
         action,
         token: state.token,
         pin: state.pin,
+        ...(action !== "document" ? { deferDocuments: true } : { documentKind }),
         ...(action === "approve" ? { approvalVersion: state.tracking?.snapshot?.approvalVersion || "" } : {}),
         ...(action === "approve" ? { decision, signature, note } : {}),
       }),
@@ -178,7 +179,8 @@
       error.retryable = response.status >= 500 || response.status === 429 || response.status === 408;
       throw error;
     }
-    if (!data.tracking || typeof data.tracking !== "object" || !data.tracking.snapshot) {
+    if (action === "document" && data.document?.kind === documentKind) return data.document;
+    if (action === "document" || !data.tracking || typeof data.tracking !== "object" || !data.tracking.snapshot) {
       const error = new Error("A assistência não respondeu como esperado. Tente novamente.");
       error.retryable = true;
       throw error;
@@ -192,6 +194,13 @@
       }
       throw error;
     } finally { clearTimeout(timeout); }
+  };
+  window.assistenciaCustomerDocument = async (kind) => {
+    try { return await api("document", "", null, "", kind); }
+    catch (error) {
+      if (["access_unavailable", "pin_invalid", "pin_locked", "store_license_inactive"].includes(error.code)) fail(error.message);
+      throw error;
+    }
   };
   const renderProgress = (status) => {
     const steps = [
