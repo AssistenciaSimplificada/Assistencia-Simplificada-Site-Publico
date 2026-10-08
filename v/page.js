@@ -590,16 +590,35 @@
     if (event.key === "Escape" && !detailNode.hidden) { event.preventDefault(); closeDetail(); }
   });
   document.querySelector("#share").addEventListener("click", async () => { const title = `Vitrine — ${catalog?.storeName || "Loja"}`; const text = `Confira os aparelhos disponíveis na vitrine de ${catalog?.storeName || "nossa loja"}.`; const url = catalogShareUrl(); try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
-  const loadCatalog = async () => {
+  let catalogLoading = false;
+  let temporaryLoadFailed = false;
+  let automaticRecoveries = 0;
+  let failedAt = 0;
+  const loadCatalog = async (automatic = false) => {
+    if (catalogLoading) return;
+    catalogLoading = true;
+    temporaryLoadFailed = false;
+    if (!automatic) automaticRecoveries = 0;
     statusNode.textContent = "Carregando vitrine…";
     try { await load(); } catch (error) {
       const permanent = ["link_invalid", "not_found", "store_unavailable"].includes(error.message);
+      temporaryLoadFailed = !permanent;
+      failedAt = Date.now();
       statusNode.textContent = error.message === "link_invalid" ? "Este endereço de vitrine está incompleto." : "Não foi possível abrir a vitrine agora.";
       catalogNode.innerHTML = permanent
         ? '<div class="empty"><h2>Vitrine indisponível</h2><p>Confirme o endereço e a disponibilidade com a loja.</p></div>'
         : '<div class="empty"><h2>Não foi possível carregar a vitrine</h2><p>A conexão com o serviço não respondeu. Tente novamente em alguns instantes.</p><button type="button" id="retry-catalog">Tentar novamente</button></div>';
       document.querySelector("#retry-catalog")?.addEventListener("click", event => { event.currentTarget.disabled = true; void loadCatalog(); });
-    }
+    } finally { catalogLoading = false; }
   };
+  const recoverCatalog = () => {
+    if (!temporaryLoadFailed || catalogLoading || automaticRecoveries >= 1 || !navigator.onLine) return;
+    automaticRecoveries++;
+    void loadCatalog(true);
+  };
+  window.addEventListener("online", recoverCatalog);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && Date.now() - failedAt >= 30_000) recoverCatalog();
+  });
   void loadCatalog();
 })();
