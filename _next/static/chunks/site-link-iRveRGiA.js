@@ -1,1 +1,0 @@
-import{r as e}from"./framework-DTZGTDtF.js?v=12.6.0";import{t}from"./link-Ca-j1a_8.js?v=12.6.0";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

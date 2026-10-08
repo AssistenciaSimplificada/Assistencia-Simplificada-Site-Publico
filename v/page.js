@@ -521,16 +521,24 @@
     let body = bootstrap?.catalog?.storeCode === storeCode && Array.isArray(bootstrap.catalog.items)
       ? { catalog: bootstrap.catalog } : null;
     bootstrap = null;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    try {
-      if (!body) {
-      const response = await fetch(`${API}/public/${encodeURIComponent(storeCode)}?v=${Date.now()}`, { cache: "no-store", signal: controller.signal });
-      if (!response.ok) throw new Error(response.status === 404 ? "not_found" : response.status === 403 ? "store_unavailable" : "connection_unavailable");
-      body = await response.json();
-      if (!body.catalog || !Array.isArray(body.catalog.items)) throw new Error("connection_unavailable");
+    if (!body) {
+      // Retry only this read. A revoked store or missing link stays blocked.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 45000);
+        try {
+          const response = await fetch(`${API}/public/${encodeURIComponent(storeCode)}?v=${Date.now()}`, { cache: "no-store", signal: controller.signal });
+          if (!response.ok) throw new Error(response.status === 404 ? "not_found" : response.status === 403 ? "store_unavailable" : "connection_unavailable");
+          body = await response.json();
+          if (!body.catalog || body.catalog.storeCode !== storeCode || !Array.isArray(body.catalog.items)) throw new Error("connection_unavailable");
+          break;
+        } catch (error) {
+          if (attempt === 1 || ["not_found", "store_unavailable"].includes(error.message)) throw error;
+          statusNode.textContent = "Reconectando à vitrine…";
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } finally { clearTimeout(timeout); }
       }
-    } finally { clearTimeout(timeout); }
+    }
     catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...item, warranty: displayWarranty(item) }))) };
     updateGoogleReview();
     populateMemoryFilters();
@@ -589,7 +597,7 @@
       statusNode.textContent = error.message === "link_invalid" ? "Este endereço de vitrine está incompleto." : "Não foi possível abrir a vitrine agora.";
       catalogNode.innerHTML = permanent
         ? '<div class="empty"><h2>Vitrine indisponível</h2><p>Confirme o endereço e a disponibilidade com a loja.</p></div>'
-        : '<div class="empty"><h2>Falha de conexão</h2><p>Confira sua internet e tente novamente. O endereço pode continuar válido.</p><button type="button" id="retry-catalog">Tentar novamente</button></div>';
+        : '<div class="empty"><h2>Não foi possível carregar a vitrine</h2><p>A conexão com o serviço não respondeu. Tente novamente em alguns instantes.</p><button type="button" id="retry-catalog">Tentar novamente</button></div>';
       document.querySelector("#retry-catalog")?.addEventListener("click", event => { event.currentTarget.disabled = true; void loadCatalog(); });
     }
   };
