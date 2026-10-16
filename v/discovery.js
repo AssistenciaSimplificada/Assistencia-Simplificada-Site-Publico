@@ -49,7 +49,9 @@
     return dialog;
   };
   const shareSearch = async () => {
-    const url = new URL(location.href); url.hash = context.catalog.storeCode;
+    const url = new URL(context.catalogHomeUrl ? context.catalogHomeUrl() : location.href);
+    url.search=location.search;
+    if(!context.catalogHomeUrl)url.hash=context.catalog.storeCode;
     const fields = {q:"#search",condition:"#kind",availability:"#availability",storage:"#storage",ram:"#ram",sort:"#sort",budget:"#budget"};
     for (const [name, selector] of Object.entries(fields)) {const value=$(selector)?.value || ""; if(value) url.searchParams.set(name,value); else url.searchParams.delete(name);}
     if (guideUse) url.searchParams.set("use", guideUse); else url.searchParams.delete("use");
@@ -126,7 +128,7 @@
     context=next;
     if(!$("#discovery-controls")) {
       $("#status").insertAdjacentHTML("beforebegin",'<section id="discovery-controls" class="discovery-controls" aria-label="Encontre e salve aparelhos"><label>Preço máximo à vista<select id="budget"><option value="">Qualquer valor</option><option value="80000">Até R$ 800</option><option value="100000">Até R$ 1.000</option><option value="150000">Até R$ 1.500</option><option value="200000">Até R$ 2.000</option><option value="300000">Até R$ 3.000</option></select></label><button id="share-search" type="button">Compartilhar busca</button><button id="clear-search" type="button">Limpar filtros</button><button id="show-favorites" type="button" aria-pressed="false">Favoritos</button><button id="choose-device" type="button">Me ajude a escolher</button><button id="compare-devices" type="button">Comparar aparelhos</button></section><p id="discovery-feedback" role="status"></p>');
-      $("#clear-search").onclick=()=>{for(const selector of ["#search","#mobile-search","#kind","#availability","#storage","#ram","#budget"])$(selector).value="";$("#sort").value="featured";guideUse="";onlyFavorites=false;context.render();notify("Filtros limpos.");};$("#budget").onchange=()=>context.render();$("#share-search").onclick=shareSearch;$("#show-favorites").onclick=()=>{onlyFavorites=!onlyFavorites;context.render();refreshBar();};$("#compare-devices").onclick=()=>chooseComparison();$("#choose-device").onclick=helpChoose;
+      $("#clear-search").onclick=()=>{for(const selector of ["#search","#mobile-search","#kind","#availability","#storage","#ram","#budget"])$(selector).value="";$("#sort").value="featured";guideUse="";onlyFavorites=false;context.navigateCategory?.();context.render();notify("Filtros limpos.");};$("#budget").onchange=()=>context.render();$("#share-search").onclick=shareSearch;$("#show-favorites").onclick=()=>{onlyFavorites=!onlyFavorites;context.render();refreshBar();};$("#compare-devices").onclick=()=>chooseComparison();$("#choose-device").onclick=helpChoose;
     }
     if(!restored) {
       restored=true;
@@ -189,7 +191,10 @@
       const availability = other.availability === "order" ? "Sob encomenda" : other.catalogOnly ? "Consulte o estoque" : other.availability === "ready" ? "Pronta entrega" : "Consulte a loja";
       return `<button class="discovery-recommendation" type="button" data-code="${escape(other.code)}">${photo}<span class="recommendation-copy"><small>${escape(reason)}</small><strong>${escape(other.title)}</strong><b>${money(price(other))} <span>à vista</span></b><small>${other.purchaseKind === "Usado" ? "Seminovo" : "Novo"} · ${availability}</small></span><span class="recommendation-arrow" aria-hidden="true">›</span></button>`;
     }).join("")}</div>`;
-    section.querySelectorAll("button").forEach(button => button.onclick = () => { location.hash = `${context.catalog.storeCode}/${button.dataset.code}`; });
+    section.querySelectorAll("button").forEach(button => button.onclick = () => {
+      if(context.navigateItem)context.navigateItem(context.catalog.items.find(item=>item.code===button.dataset.code));
+      else location.hash = `${context.catalog.storeCode}/${button.dataset.code}`;
+    });
     const layout = $("#detail .detail-layout");
     layout.classList.add("has-recommendations"); layout.append(section);
   };

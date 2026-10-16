@@ -4,6 +4,7 @@
   try { bootstrap = JSON.parse(document.querySelector("#catalog-bootstrap")?.textContent || "null"); } catch { /* Fall back to the public API. */ }
   const config = window.__ASSISTENCIA_CATALOG_CONFIG__ || bootstrap?.config;
   const API = config.apiUrl;
+  const friendlyUrls = config.friendlyUrls === true;
   const tools = window.assistenciaCatalogTools;
   const catalogNode = document.querySelector("#catalog");
   const detailNode = document.querySelector("#detail");
@@ -37,6 +38,35 @@
     googleReviewNode.hidden = !url;
     if (url) googleReviewNode.href = url;
     else googleReviewNode.removeAttribute("href");
+  };
+  const instagramProfileUrl = input => {
+    try {
+      const url = new URL(String(input || ""));
+      const handle = url.pathname.replace(/^\//, "").replace(/\/$/, "");
+      if (url.protocol !== "https:" || !["instagram.com", "www.instagram.com"].includes(url.hostname)
+        || url.username || url.password || url.port || !/^[a-z0-9._]{1,30}$/i.test(handle)
+        || ["accounts", "explore", "direct", "p", "reel", "reels", "stories"].includes(handle.toLowerCase())) return "";
+      return `https://www.instagram.com/${handle}/`;
+    } catch { return ""; }
+  };
+  const storeWhatsAppUrl = (message, source = catalog) => {
+    if (!source || source.storeCode === "mostruario") return "";
+    const digits = String(source.storePhone || "").replace(/\D/g, "");
+    const phone = /^\d{10,11}$/.test(digits) && !/^0+$/.test(digits) ? `55${digits}` : /^55\d{10,11}$/.test(digits) ? digits : "";
+    return phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : "";
+  };
+  const updateStoreContacts = (source = catalog) => {
+    const whatsapp = storeWhatsAppUrl("Olá! Gostaria de informações sobre os aparelhos da vitrine.", source);
+    const instagram = instagramProfileUrl(source?.storeInstagramUrl);
+    for (const [id, url] of [["header-whatsapp", whatsapp], ["header-instagram", instagram], ["mobile-store-contact", whatsapp]]) {
+      const link = document.getElementById(id);
+      if (!link) continue;
+      link.hidden = !url;
+      if (url) link.href = url;
+      else link.removeAttribute("href");
+    }
+    const contacts = document.querySelector(".catalog-social-links");
+    if (contacts) contacts.hidden = !whatsapp && !instagram;
   };
   const filterToggle = document.querySelector("#toggle-filters");
   filterToggle?.addEventListener("click", () => {
@@ -111,7 +141,7 @@
     if (brandKey === "samsung" && modelKey.startsWith("galaxy ")) modelKey = modelKey.slice(7);
     return modelKey;
   };
-  const unitVariant = item => ({ code: item.code, color: String(item.unitColor || "").trim() || (String(item.color || "").includes(",") || (item.availableColors || []).length > 1 ? "" : String(item.color || "").trim()), imageUrls: item.imageUrls || [] });
+  const unitVariant = item => ({ code: item.code, publicSlug:item.publicSlug, color: String(item.unitColor || "").trim() || (String(item.color || "").includes(",") || (item.availableColors || []).length > 1 ? "" : String(item.color || "").trim()), imageUrls: item.imageUrls || [] });
   const mergeCatalogVariants = items => {
     const physicalKeys = new Set(items.filter(item => !item.catalogOnly && item.availability !== "unavailable").map(item => [item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|")));
     const grouped = new Map();
@@ -121,7 +151,7 @@
       const key = `${variantBaseKey}|${variantPart(item.availability)}`;
       const current = grouped.get(key);
       if (!current) {
-        grouped.set(key, { ...item, variantBaseKey, stockQuantity: 1, variantCodes: [item.code], variants: [unitVariant(item)], availableColors: [...new Set([...(item.availableColors || []), ...String(item.color || "").split(",")].map(value => value.trim()).filter(Boolean))] });
+        grouped.set(key, { ...item, variantBaseKey, stockQuantity: 1, variantCodes: [item.code], variantSlugs:[item.publicSlug].filter(Boolean), variants: [unitVariant(item)], availableColors: [...new Set([...(item.availableColors || []), ...String(item.color || "").split(",")].map(value => value.trim()).filter(Boolean))] });
         continue;
       }
       const newest = String(item.updatedAt || "") > String(current.updatedAt || "") ? item : current;
@@ -132,6 +162,7 @@
         salesCount: Math.max(Number(current.salesCount || 0), Number(item.salesCount || 0)),
         stockQuantity: current.catalogOnly && item.catalogOnly ? 1 : Number(current.stockQuantity || 1) + 1,
         variantCodes: [...new Set([...(current.variantCodes || [current.code]), item.code])],
+        variantSlugs: [...new Set([...(current.variantSlugs || []),item.publicSlug].filter(Boolean))],
         variants: [...current.variants, unitVariant(item)],
         availableColors: [...new Set([...(current.availableColors || []), ...(item.availableColors || []), ...String(item.color || "").split(",")].map(value => value.trim()).filter(Boolean))],
         imageUrls: [...new Set([...(current.imageUrls || []), ...(item.imageUrls || [])])],
@@ -141,7 +172,15 @@
     const availableBases = new Set(variants.filter(item => item.availability !== "unavailable").map(item => item.variantBaseKey));
     for (const unavailable of variants.filter(item => item.availability === "unavailable" && availableBases.has(item.variantBaseKey))) {
       const available = variants.find(item => item.availability !== "unavailable" && item.variantBaseKey === unavailable.variantBaseKey);
-      if (available) available.variantCodes = [...new Set([...(available.variantCodes || [available.code]), ...(unavailable.variantCodes || [unavailable.code])])];
+      if (available) {
+        available.variantCodes = [...new Set([...(available.variantCodes || [available.code]), ...(unavailable.variantCodes || [unavailable.code])])];
+        available.variantSlugs = [...new Set([...(available.variantSlugs || []),...(unavailable.variantSlugs || [])])];
+      }
+    }
+    for (const item of items.filter(entry=>entry.catalogOnly && physicalKeys.has([entry.purchaseKind,entry.deviceType,entry.brand,variantModel(entry.brand,entry.model),entry.storage,entry.ram].map(variantPart).join("|")))) {
+      const base=[item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|");
+      const available=variants.find(entry=>entry.variantBaseKey===base && entry.availability!=="unavailable");
+      if(available){available.variantCodes=[...new Set([...available.variantCodes,item.code])];available.variantSlugs=[...new Set([...available.variantSlugs,item.publicSlug].filter(Boolean))];}
     }
     return variants
       .filter(item => item.availability !== "unavailable" || !availableBases.has(item.variantBaseKey))
@@ -164,8 +203,22 @@
   const offerPercent = item => item.discountPriceCents && Number(item.priceCents) > Number(item.discountPriceCents) ? Math.round((1 - Number(item.discountPriceCents) / Number(item.priceCents)) * 100) : 0;
   const slug = value => String(value || "aparelho").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "aparelho";
   const productRouteKey = item => `${slug(item.title)}--${String(item.code || "item").slice(-6).toLowerCase()}`;
+  const friendlyProductPath = item => typeof item?.publicSlug === "string" && item.publicSlug.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.publicSlug)
+    ? `/${item.purchaseKind === "Novo" ? "novos" : "usados"}/${item.publicSlug}` : null;
+  const categoryPath = () => kindNode.value === "Novo" ? "/novos" : kindNode.value === "Usado" ? "/usados" : "/";
+  const catalogHomeUrl = () => friendlyUrls ? `${location.origin}${categoryPath()}` : `${location.origin}${location.pathname}#${catalog.storeCode}`;
+  const pathSelection = () => friendlyUrls ? /^\/(novos|usados)(?:\/([a-z0-9]+(?:-[a-z0-9]+)*))?\/?$/.exec(location.pathname) : null;
+  const applyPathCategory = () => { if(friendlyUrls){const route=pathSelection();kindNode.value=route ? route[1] === "novos" ? "Novo" : "Usado" : new URLSearchParams(location.search).get("condition") || "";} };
+  const navigateCategory = () => { if(friendlyUrls) history.pushState(null,"",categoryPath()+location.search); };
+  const navigateItem = item => {
+    if(!item)return;
+    const path=friendlyUrls && friendlyProductPath(item);
+    if(path)history.pushState(null,"",path+location.search);
+    else location.hash=`${catalog.storeCode}/${productRouteKey(item)}`;
+    render();
+  };
   const catalogShareUrl = item => /^[A-Za-z0-9_-]{12}$/.test(String(catalog?.storeCode || "")) && (!item || /^[A-Za-z0-9_-]{10}$/.test(String(item.code || "")))
-    ? `${API}/share/${catalog.storeCode}${item ? `/${item.code}` : ""}`
+    ? friendlyUrls && (!item || friendlyProductPath(item)) ? `${location.origin}${item ? friendlyProductPath(item) : "/"}` : `${API}/share/${catalog.storeCode}${item ? `/${item.code}` : ""}`
     : location.href;
   const availabilityLabel = item => item.availability === "order" ? "Sob encomenda" : item.availability === "unavailable" ? "Indisponível" : item.catalogOnly ? "Disponível em estoque" : "Pronta entrega";
   const availabilityIcon = item => item.availability === "order" ? "🚚" : item.availability === "unavailable" ? "•" : "✓";
@@ -272,12 +325,12 @@
     const hasSales = Number(item.salesCount || 0) > 0;
     bestSellerNode.hidden = false;
     bestSellerNode.innerHTML = `<div class="best-thumb"><img src="${imageUrl(item.imageUrls[0])}" alt=""></div><div class="best-copy"><small>${hasSales ? "MAIS VENDIDO DA LOJA" : "DESTAQUE DA LOJA"}</small><strong>${esc(item.title)}</strong><span>${item.availability === "order" ? "🚚" : "✓"} ${availabilityLabel(item)} • 📱 ${esc(displayCondition(item.purchaseKind))}${item.storage ? ` • 💾 ${esc(formatCapacity(item.storage))}` : ""}${item.color ? ` • 🎨 ${esc(item.color)}` : ""}</span></div><div class="best-price"><small>A partir de</small><strong>${money(cashPrice(item))}</strong></div><button type="button" data-code="${esc(item.code)}">Ver aparelho</button>`;
-    bestSellerNode.querySelector("button").addEventListener("click", () => { location.hash = `${catalog.storeCode}/${productRouteKey(item)}`; render(); });
+    bestSellerNode.querySelector("button").addEventListener("click", () => navigateItem(item));
   }
   const bindCards = () => {
     const byCode = new Map(catalog.items.map(item => [String(item.code), item]));
     document.querySelectorAll(".card").forEach(node => {
-    const open = () => { const item = byCode.get(node.dataset.code); if (item) location.hash = `${catalog.storeCode}/${productRouteKey(item)}`; render(); };
+    const open = () => navigateItem(byCode.get(node.dataset.code));
     node.addEventListener("click", open); node.addEventListener("keydown", event => { if (event.key === "Enter") open(); });
     });
   };
@@ -322,15 +375,16 @@
   function closeDetail() {
     closeDeviceHelper();
     closePhotoViewer();
-    location.hash = catalog.storeCode;
+    if(friendlyUrls){navigateCategory();render();}else location.hash = catalog.storeCode;
   }
   function renderDetail(item) {
     detailCode = item.code;
     detailNode.hidden = false; document.body.classList.add("detail-open");
     const variants = (item.variants || []).filter(variant => variant.imageUrls?.length);
-    let selectedVariant = variants[0] || null;
-    const phone = String(catalog.storePhone || "").replace(/\D/g, "");
-    const whatsappUrl = color => phone ? `https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(`Olá! Quero adquirir o aparelho ${item.title}${color ? ` na cor ${color}` : ""}, anunciado por ${money(cashPrice(item))}. ${item.availability === "order" ? "Qual é o prazo para encomenda?" : item.catalogOnly ? "Pode confirmar se há unidade pronta para entrega?" : "Ele ainda está disponível para pronta entrega?"}`)}` : "";
+    const selectedSlug=pathSelection()?.[2];
+    const selectedCode=location.hash.slice(1).split("/")[1];
+    let selectedVariant = variants.find(variant=>(selectedSlug && variant.publicSlug === selectedSlug) || (selectedCode && variant.code === selectedCode)) || variants[0] || null;
+    const whatsappUrl = color => storeWhatsAppUrl(`Olá! Quero adquirir o aparelho ${item.title}${color ? ` na cor ${color}` : ""}, anunciado por ${money(cashPrice(item))}. ${item.availability === "order" ? "Qual é o prazo para encomenda?" : item.catalogOnly ? "Pode confirmar se há unidade pronta para entrega?" : "Ele ainda está disponível para pronta entrega?"}`);
     const wa = whatsappUrl(selectedVariant?.color || "");
     const facts = [["Condição",displayCondition(item.purchaseKind)],["Armazenamento",formatCapacity(item.storage)],["Cor",item.color],["Garantia",item.warranty],["Bateria",formatBattery(item.batteryHealth)],["Memória RAM",formatCapacity(item.ram)],["Itens inclusos",item.includedItems],["Detalhes do estado",item.conditionDetails]].filter(([,value]) => value);
     const images = (selectedVariant?.imageUrls?.length ? selectedVariant.imageUrls : item.imageUrls || []).filter(Boolean);
@@ -420,6 +474,8 @@
     });
     detailNode.querySelectorAll(".variant-picker button").forEach(button => button.addEventListener("click", () => {
       selectedVariant = variants.find(variant => variant.code === button.dataset.variant) || selectedVariant;
+      const variantPath=friendlyUrls && friendlyProductPath({...item,...selectedVariant});
+      if(variantPath)history.replaceState(null,"",variantPath+location.search);
       const photos = selectedVariant.imageUrls.filter(Boolean);
       mainImage.src = imageUrl(photos[0]);
       mainImage.alt = selectedVariant.color ? `${item.title} na cor ${selectedVariant.color}` : item.title;
@@ -522,29 +578,36 @@
     };
     zoom.addEventListener("click", event => { if (Date.now() >= suppressViewerClickUntil && !event.target.closest(".zoom-controls")) openPhotoViewer(); });
     detailNode.querySelector(".device-helper-trigger").addEventListener("click", () => openDeviceHelper(item));
-    detailNode.querySelector(".share-product").addEventListener("click", async () => { const url = catalogShareUrl(item); const title = `${item.title} — Vitrine ${catalog.storeName}`; const text = `Confira este aparelho na vitrine de ${catalog.storeName}.`; try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
+    detailNode.querySelector(".share-product").addEventListener("click", async () => { const url = catalogShareUrl(selectedVariant?.publicSlug ? {...item,...selectedVariant} : item); const title = `${item.title} — Vitrine ${catalog.storeName}`; const text = `Confira este aparelho na vitrine de ${catalog.storeName}.`; try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
   }
+  let routeInitialized=false;
   function render() {
-    const storeContact = document.querySelector("#mobile-store-contact");
-    const storePhone = String(catalog?.storePhone || "").replace(/\D/g, "");
-    if (storeContact) {
-      storeContact.hidden = !storePhone || catalog?.storeCode === "mostruario";
-      if (storePhone) storeContact.href = `https://wa.me/${storePhone.startsWith("55") ? storePhone : `55${storePhone}`}?text=${encodeURIComponent("Olá! Gostaria de informações sobre os aparelhos da vitrine.")}`;
-    }
+    updateStoreContacts();
     if (!catalog) return;
     catalog.items = catalog.items.map(item => tools.effectivePricing(item, promotionNow()));
-    window.assistenciaDiscovery?.init({ catalog, api: API, render, imageUrl });
+    window.assistenciaDiscovery?.init({ catalog, api: API, render, imageUrl, navigateItem: friendlyUrls ? navigateItem : null, navigateCategory, catalogHomeUrl });
+    if(!routeInitialized){routeInitialized=true;applyPathCategory();}
     mobileSortNode.value = sortNode.value;
     updateMobileFilterState();
     syncRamFilterVisibility();
     document.querySelector("#ready-items").textContent = catalog.items.filter(entry => entry.availability === "ready").reduce((sum,item) => sum + Number(item.stockQuantity || 1), 0);
     const [, itemCode] = location.hash.slice(1).split("/");
-    const item = itemCode && catalog.items.find(entry => entry.code === itemCode || entry.variantCodes?.includes(itemCode) || productRouteKey(entry) === itemCode);
+    const route=pathSelection();
+    let item = route?.[2] ? catalog.items.find(entry=>entry.publicSlug===route[2] || entry.variantSlugs?.includes(route[2]))
+      : itemCode && catalog.items.find(entry => entry.code === itemCode || entry.variantCodes?.includes(itemCode) || productRouteKey(entry) === itemCode);
+    if(!item && /--[a-z0-9_-]{6}$/.test(itemCode || "")){
+      const matches=catalog.items.filter(entry=>(entry.variantCodes || [entry.code]).some(code=>String(code).slice(-6).toLowerCase()===itemCode.slice(-6)));
+      if(matches.length===1)item=matches[0];
+    }
+    const legacyVariant=item?.variants?.find(variant=>variant.code===itemCode);
+    const canonicalPath=item ? friendlyProductPath(legacyVariant ? {...item,...legacyVariant} : item) : categoryPath();
+    if(friendlyUrls && location.hash && (!itemCode || item) && canonicalPath)history.replaceState(null,"",canonicalPath+location.search);
     renderList();
     if (item) {
       renderDetail(item);
       window.assistenciaDiscovery?.detail(item);
     }
+    else if(route?.[2])statusNode.textContent="Este aparelho não está mais disponível. Consulte as outras opções da loja.";
     schedulePromotions();
   }
   async function load() {
@@ -605,11 +668,12 @@
   mobileSearchNode.addEventListener("input", () => { searchNode.value = mobileSearchNode.value; scheduleSearch(); });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshPromotions(); });
   mobileSearchSubmitNode?.addEventListener("click", finishMobileSearch);
-  kindNode.addEventListener("change", () => { updateMobileFilterState(); renderList(); }); availabilityNode.addEventListener("change", () => { updateMobileFilterState(); renderList(); }); storageNode.addEventListener("change", renderList); ramNode.addEventListener("change", renderList);
+  kindNode.addEventListener("change", () => { navigateCategory();updateMobileFilterState(); renderList(); }); availabilityNode.addEventListener("change", () => { updateMobileFilterState(); renderList(); }); storageNode.addEventListener("change", renderList); ramNode.addEventListener("change", renderList);
   sortNode.addEventListener("change", () => { mobileSortNode.value = sortNode.value; syncRamFilterVisibility(); renderList(); }); mobileSortNode.addEventListener("change", () => { sortNode.value = mobileSortNode.value; syncRamFilterVisibility(); renderList(); });
-  mobileFilterNodes.forEach(button => button.addEventListener("click", () => { kindNode.value = button.dataset.kind; availabilityNode.value = button.dataset.availability; updateMobileFilterState(); renderList(); }));
+  mobileFilterNodes.forEach(button => button.addEventListener("click", () => { kindNode.value = button.dataset.kind; availabilityNode.value = button.dataset.availability; navigateCategory();updateMobileFilterState(); renderList(); }));
   let scrollFrame = 0; window.addEventListener("scroll", () => { if (scrollFrame) return; scrollFrame = requestAnimationFrame(() => { document.querySelector(".topbar").classList.toggle("is-condensed", scrollY > 90); scrollFrame = 0; }); }, { passive:true });
   window.addEventListener("hashchange", render);
+  if(friendlyUrls)window.addEventListener("popstate",()=>{applyPathCategory();render();});
   detailNode.addEventListener("click", event => { if (event.target === detailNode) closeDetail(); });
   document.addEventListener("keydown", event => {
     if (document.querySelector(".discovery-dialog[open]")) return;
@@ -641,6 +705,7 @@
     temporaryLoadFailed = false;
     if (!automatic) automaticRecoveries = 0;
     statusNode.textContent = "Carregando vitrine…";
+    updateStoreContacts(null);
     try { await load(); } catch (error) {
       const permanent = ["link_invalid", "not_found", "store_unavailable"].includes(error.message);
       temporaryLoadFailed = !permanent;
