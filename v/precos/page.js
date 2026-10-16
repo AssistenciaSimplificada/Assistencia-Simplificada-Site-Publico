@@ -1,6 +1,11 @@
 (() => {
   "use strict";
   const API = window.__ASSISTENCIA_CATALOG_CONFIG__.apiUrl;
+  const tools = window.assistenciaCatalogTools;
+  const reviewNode = document.querySelector("#price-review");
+  const reviewConfirm = document.querySelector("#price-review-confirm");
+  const reviewBack = document.querySelector("#price-review-back");
+  let reviewedChanges = [];
   const [storeCode, token] = location.hash.slice(1).split("/");
   const access = document.querySelector("#access");
   const editor = document.querySelector("#editor");
@@ -49,9 +54,9 @@
   };
   const changed = item => {
     const before = original.get(item.code);
-    return before && (before.priceCents !== item.priceCents || before.discountPriceCents !== item.discountPriceCents || before.interestFreeInstallments !== item.interestFreeInstallments || before.interestMaxInstallments !== item.interestMaxInstallments);
+    return before && (before.priceCents !== item.priceCents || before.discountPriceCents !== item.discountPriceCents || before.promotionStartsAt !== item.promotionStartsAt || before.promotionEndsAt !== item.promotionEndsAt || before.interestFreeInstallments !== item.interestFreeInstallments || before.interestMaxInstallments !== item.interestMaxInstallments);
   };
-  const originalValues = item => ({ priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments, updatedAt:item.updatedAt });
+  const originalValues = item => ({ priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, promotionStartsAt:item.promotionStartsAt || null, promotionEndsAt:item.promotionEndsAt || null, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments, updatedAt:item.updatedAt });
   const updateCount = (item) => {
     if (item) {
       if (changed(item)) changedCodes.add(item.code);
@@ -71,12 +76,25 @@
       return `<article class="device-row ${changed(item) ? "changed" : ""}" data-code="${esc(item.code)}"><img src="${esc(imageUrl(item.imageUrl))}" alt="" loading="lazy" decoding="async" width="64" height="64"><div class="device-info"><strong>${esc(item.title)}</strong><span>${esc(item.purchaseKind)} · ${item.availability === "order" ? "Sob encomenda" : item.availability === "unavailable" ? "Indisponível" : "Pronta entrega"}</span></div><label class="price-field">Preço normal<div class="price-input"><span>R$</span><input data-field="priceCents" inputmode="decimal" value="${esc(draft.priceCents ?? moneyInput(item.priceCents))}"></div></label><label class="price-field">Preço promocional<div class="price-input"><span>R$</span><input data-field="discountPriceCents" inputmode="decimal" value="${esc(draft.discountPriceCents ?? moneyInput(item.discountPriceCents))}" placeholder="Sem promoção"></div></label><div class="installment-fields"><label class="price-field">Parcelamento sem juros<select data-field="interestFreeInstallments">${freeOptions}</select></label><label class="price-field">Limite com juros<select data-field="interestMaxInstallments">${paidOptions}</select></label></div></article>`;
     }).join("") + (filtered.length > visibleLimit ? `<div class="more-items"><span>Mostrando ${visibleLimit} de ${filtered.length} aparelhos</span><button id="more-items" type="button">Mostrar mais ${Math.min(PAGE_SIZE, filtered.length - visibleLimit)}</button></div>` : "") : '<div class="empty">Nenhum aparelho encontrado.</div>';
     itemsNode.querySelector("#more-items")?.addEventListener("click", () => { visibleLimit += PAGE_SIZE;render(); });
+    itemsNode.querySelectorAll(".device-row").forEach(row => {
+      const item = itemsByCode.get(row.dataset.code);
+      row.insertAdjacentHTML("beforeend", `<details class="promotion-fields" ${item.promotionStartsAt || item.promotionEndsAt ? "open" : ""}><summary>Validade da promoção · horário de Brasília (UTC−3)</summary><div><label class="price-field">Início<input data-field="promotionStartsAt" type="datetime-local" value="${esc(tools.dateInput(item.promotionStartsAt))}"></label><label class="price-field">Término<input data-field="promotionEndsAt" type="datetime-local" value="${esc(tools.dateInput(item.promotionEndsAt))}"></label></div><small>Datas vazias mantêm a promoção sem prazo.</small></details>`);
+    });
+    itemsNode.querySelectorAll(".promotion-fields input").forEach(input => input.addEventListener("change", () => {
+      const row = input.closest(".device-row"), item = itemsByCode.get(row.dataset.code);
+      item[input.dataset.field] = tools.inputDate(input.value);
+      row.classList.toggle("changed", changed(item)); updateCount(item);
+    }));
     itemsNode.querySelectorAll(".price-input input").forEach(input => input.addEventListener("input", event => {
       const row = event.target.closest(".device-row");
       const item = itemsByCode.get(row.dataset.code);
       const value = event.target.value.trim();
       priceDrafts.set(item.code, { ...priceDrafts.get(item.code), [event.target.dataset.field]: event.target.value });
       item[event.target.dataset.field] = value ? cents(value) : null;
+      if (event.target.dataset.field === "discountPriceCents" && !value) {
+        item.promotionStartsAt = null; item.promotionEndsAt = null;
+        row.querySelectorAll(".promotion-fields input").forEach(date => { date.value = ""; });
+      }
       row.classList.toggle("changed", changed(item));
       updateCount(item);
     }));
@@ -95,6 +113,8 @@
     const body = await request("/price-editor/session", { storeCode, token, pin });
     items = (body.items || []).map(item => ({
       ...item,
+      promotionStartsAt: item.promotionStartsAt || null,
+      promotionEndsAt: item.promotionEndsAt || null,
       interestFreeInstallments: Number(item.interestFreeInstallments) || 1,
       interestMaxInstallments: Number(item.interestMaxInstallments) || Number(item.maxInstallments) || Number(item.interestFreeInstallments) || 1,
       paymentMaximumInstallments: Number(item.paymentMaximumInstallments) || Number(item.maxInstallments) || Number(item.interestFreeInstallments) || 1,
@@ -136,9 +156,9 @@
     try { await navigator.clipboard.writeText(noticeMessage); notify("Resumo completo copiado."); }
     catch { notify("Não foi possível copiar o resumo agora.", true); }
   });
-  saveNode.addEventListener("click", async () => {
+  const saveReviewedChanges = async () => {
     if (saving) return;
-    const changes = items.filter(changed).map(item => ({ ...item }));
+    const changes = reviewedChanges;
     if (!changes.length) return;
     for (const item of changes) {
       if (!Number.isInteger(item.priceCents) || item.priceCents <= 0) return notify(`Informe um preço válido para ${item.title}.`, true);
@@ -157,12 +177,15 @@
       }
     } catch { whatsappTab = null; }
     saving = true;
+    reviewConfirm.disabled = true; reviewBack.disabled = true;
+    reviewConfirm.textContent = "Salvando…";
+    document.querySelector("#price-review-error").textContent = "";
     clearTimeout(searchTimer);
     itemsNode.inert = true;
     searchNode.disabled = true;
     saveNode.disabled = true; saveNode.textContent = "Salvando...";
     try {
-      const result = await request("/price-editor/update", { storeCode, token, pin, changes:changes.map(item => ({ itemCode:item.code, expectedUpdatedAt:original.get(item.code)?.updatedAt, priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments })) });
+      const result = await request("/price-editor/update", { storeCode, token, pin, changes:changes.map(item => ({ itemCode:item.code, expectedUpdatedAt:original.get(item.code)?.updatedAt, priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, promotionStartsAt:item.promotionStartsAt, promotionEndsAt:item.promotionEndsAt, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments })) });
       for (const item of changes) {
         const revision = result.items?.find(entry => entry.itemCode === item.code)?.updatedAt || result.updatedAt || item.updatedAt;
         original.set(item.code, originalValues({ ...item, updatedAt:revision }));
@@ -170,6 +193,7 @@
         const current = itemsByCode.get(item.code);
         if (current) current.updatedAt = revision;
       }
+      reviewNode.close(); editor.inert = false;
       render(); notify(`${result.updated} aparelho${result.updated === 1 ? " atualizado" : "s atualizados"} com sucesso.`);
       const notice = result.whatsAppNotice;
       if (result.updated > 0 && typeof notice?.message === "string" && notice.message.trim()) {
@@ -189,11 +213,35 @@
         }
       }
     } catch (error) {
+      document.querySelector("#price-review-error").textContent = error.message === "catalog_conflict" ? "Outro usuário alterou estes dados. Seus valores foram preservados; reabra o link para conferir a versão atual." : "Não foi possível confirmar a gravação. Os valores continuam aqui para conferência.";
       notify(error.message === "catalog_conflict" ? "Este aparelho foi alterado em outra sessão. Suas alterações continuam na tela; reabra o link para conferir os valores atuais antes de salvar." : error.message === "editor_expired" ? "Este acesso venceu." : "Não foi possível salvar agora. Tente novamente.", true);
       if (error.message === "catalog_conflict") clearTimeout(notify.timer);
     }
-    finally { if (whatsappTab && !whatsappTab.closed) whatsappTab.close(); saving = false; itemsNode.inert = false; searchNode.disabled = false; saveNode.textContent = "Salvar alterações"; updateCount(); }
+    finally { if (whatsappTab && !whatsappTab.closed) whatsappTab.close(); saving = false; reviewConfirm.disabled = false; reviewBack.disabled = false; reviewConfirm.textContent = "Confirmar e salvar"; itemsNode.inert = false; searchNode.disabled = false; saveNode.textContent = "Salvar alterações"; updateCount(); }
+  };
+  saveNode.addEventListener("click", () => {
+    if (saving || reviewNode.open) return;
+    const changes = items.filter(changed).map(item => ({ ...item }));
+    if (!changes.length) return;
+    for (const item of changes) {
+      if (!Number.isInteger(item.priceCents) || item.priceCents <= 0 || item.priceCents > 1_000_000_000 || item.discountPriceCents != null && (!Number.isInteger(item.discountPriceCents) || item.discountPriceCents <= 0 || item.discountPriceCents >= item.priceCents)) return notify(`Revise os preços de ${item.title}.`, true);
+      if ((item.promotionStartsAt || item.promotionEndsAt) && !item.discountPriceCents || item.promotionStartsAt && item.promotionEndsAt && Date.parse(item.promotionEndsAt) <= Date.parse(item.promotionStartsAt)) return notify(`Revise a validade da promoção de ${item.title}.`, true);
+    }
+    reviewedChanges = changes;
+    const currency = cents => cents == null ? "Sem promoção" : new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" }).format(cents / 100);
+    const validity = item => `${item.promotionStartsAt ? tools.dateInput(item.promotionStartsAt).replace("T", " ") : "Imediato"} → ${item.promotionEndsAt ? tools.dateInput(item.promotionEndsAt).replace("T", " ") : "Sem término"}`;
+    const fields = [["Preço normal", item => currency(item.priceCents)], ["Promoção", item => currency(item.discountPriceCents)], ["Validade · Brasília", validity], ["Sem juros", item => `Até ${item.interestFreeInstallments}x`], ["Limite com juros", item => item.interestMaxInstallments > item.interestFreeInstallments ? `Até ${item.interestMaxInstallments}x` : "Não oferecido"]];
+    document.querySelector("#price-review-items").innerHTML = `<p>${changes.length} aparelho(s) com alterações. Confira os valores anteriores e os novos.</p>${changes.map(item => {
+      const before = original.get(item.code), difference = item.priceCents - before.priceCents;
+      return `<article><h3>${esc(item.title)}</h3><div class="review-columns"><span>Condição</span><strong>Anterior</strong><strong>Novo</strong></div>${fields.map(([label, value]) => `<div class="review-columns ${value(before) !== value(item) ? "review-changed" : ""}"><span>${label}</span><span>${esc(value(before))}</span><strong>${esc(value(item))}</strong></div>`).join("")}<small>Diferença no preço normal: ${difference > 0 ? "+" : ""}${currency(difference)}</small></article>`;
+    }).join("")}`;
+    document.querySelector("#price-review-error").textContent = "";
+    clearTimeout(searchTimer); editor.inert = true; reviewNode.showModal(); reviewBack.focus();
   });
+  reviewConfirm.addEventListener("click", () => void saveReviewedChanges());
+  const leaveReview = () => { if (saving) return; reviewNode.close(); editor.inert = false; reviewedChanges = []; saveNode.focus(); };
+  reviewBack.addEventListener("click", leaveReview);
+  reviewNode.addEventListener("cancel", event => { event.preventDefault(); leaveReview(); });
   window.addEventListener("beforeunload", event => { if (saving || items.some(changed)) { event.preventDefault(); event.returnValue = ""; } });
   if (!/^[A-Za-z0-9_-]{12}$/.test(storeCode || "") || !/^[A-Za-z0-9_-]{40,60}$/.test(token || "")) { form.hidden = true; errorNode.textContent = "Este link está incompleto. Peça um novo endereço à loja."; }
 })();

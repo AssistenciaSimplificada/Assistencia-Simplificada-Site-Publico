@@ -7,8 +7,8 @@
   <meta name="referrer" content="no-referrer">
   <title>Editor de preços da Vitrine</title>
   <link rel="icon" href="/favicon.svg">
-  <link rel="stylesheet" href="/v/precos/page.css?v=12.7.0&amp;h=24cd41a71848">
-  <link rel="stylesheet" href="/identity-tokens.css?v=12.7.0&amp;h=2133ecab5705">
+  <link rel="stylesheet" href="/v/precos/page.css?v=12.8.0&amp;h=52810362c421">
+  <link rel="stylesheet" href="/identity-tokens.css?v=12.8.0&amp;h=2133ecab5705">
 </head>
 <body>
   <main>
@@ -29,8 +29,15 @@
       <p class="privacy">Este acesso permite alterar preços e limites de parcelamento da Vitrine. As opções com juros seguem as taxas cadastradas pela loja no aplicativo.</p>
     </section>
     <div id="message" role="status" aria-live="polite"></div>
+    <dialog id="price-review" class="price-review" aria-labelledby="price-review-title">
+      <div class="price-review-header"><h2 id="price-review-title">Confira antes de atualizar</h2><p>Os valores só serão publicados depois da confirmação.</p></div>
+      <div id="price-review-items" class="price-review-items"></div>
+      <p id="price-review-error" role="alert"></p>
+      <div class="price-review-actions"><button id="price-review-back" type="button">Voltar e revisar</button><button id="price-review-confirm" type="button">Confirmar e salvar</button></div>
+    </dialog>
   </main>
-  <script src="/v/config.js?v=12.7.0&amp;h=3298aa1017b0" defer></script>
-  <script src="/v/precos/page.js?v=12.7.0&amp;h=120ec9b5e524" defer></script>
+  <script src="/v/config.js?v=12.8.0&amp;h=3298aa1017b0" defer></script>
+  <script src="/v/catalog-tools.js?v=12.8.0&amp;h=402682a9abd0" defer></script>
+  <script src="/v/precos/page.js?v=12.8.0&amp;h=36172d4817c5" defer></script>
 </body>
 </html>

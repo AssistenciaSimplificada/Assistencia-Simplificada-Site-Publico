@@ -83,20 +83,21 @@
     };
     picture.append(button);
   };
-  const requestForm = item => {
-    const formDialog=open("Avise-me quando chegar", `<form class="discovery-form"><p>${escape(item.title)}</p><label>Seu nome<input name="name" maxlength="120" autocomplete="name" required></label><label>Telefone para retorno<input name="phone" type="tel" maxlength="24" autocomplete="tel" required></label><label class="discovery-consent"><input type="checkbox" name="consent" required> Autorizo a loja a entrar em contato sobre a chegada deste aparelho.</label><p>O aviso não reserva estoque nem confirma uma compra.</p><output role="status"></output><footer><button type="button" data-cancel>Voltar</button><button type="submit">Enviar solicitação</button></footer></form>`);
+  const requestForm = (item, kind = "arrival") => {
+    const priceDrop = kind === "price-drop";
+    const formDialog=open(priceDrop ? "Avise-me se o preço baixar" : "Avise-me quando chegar", `<form class="discovery-form"><p>${escape(item.title)}${priceDrop ? ` · À vista agora: ${money(price(item))}` : ""}</p><label>Seu nome<input name="name" maxlength="120" autocomplete="name" required></label><label>Telefone para retorno<input name="phone" type="tel" maxlength="24" autocomplete="tel" required></label><label class="discovery-consent"><input type="checkbox" name="consent" required> Autorizo a loja a entrar em contato sobre ${priceDrop ? "a redução do preço" : "a chegada"} deste aparelho.</label><p>A loja poderá avisar pelo WhatsApp. Este pedido não reserva estoque nem confirma uma compra. Seus dados são mantidos por até 90 dias. Para cancelar, fale com a loja.</p><output role="status"></output><footer><button type="button" data-cancel>Voltar</button><button type="submit">Enviar solicitação</button></footer></form>`);
     const form=formDialog.querySelector("form");
     form.querySelector("[data-cancel]").onclick=close;
     form.onsubmit=async event => {
       event.preventDefault(); const submit=form.querySelector('[type="submit"]'); if(submit.disabled) return;
       submit.disabled=true; formDialog.dataset.busy="true"; formDialog.querySelector('header button').disabled=true; form.querySelector('[data-cancel]').disabled=true; form.querySelectorAll('input').forEach(input=>input.disabled=true); const output=form.querySelector("output"); output.textContent="Enviando…";
       try {
-        const payload={action:"lead",kind:"arrival",itemCode:item.code,name:form.elements.name.value.trim(),phone:form.elements.phone.value.trim(),consent:true,requestId:form.dataset.requestId || (form.dataset.requestId=crypto.randomUUID())};
+        const payload={action:"lead",kind,itemCode:item.code,name:form.elements.name.value.trim(),phone:form.elements.phone.value.trim(),consent:true,requestId:form.dataset.requestId || (form.dataset.requestId=crypto.randomUUID())};
         if(context.catalog.storeCode === "mostruario") throw new Error("A demonstração não envia solicitações. Abra uma vitrine de teste para experimentar o envio.");
         const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);let response;
         try{response=await fetch(`${context.api}/engagement/${context.catalog.storeCode}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:controller.signal});}finally{clearTimeout(timer);}
         const body=await response.json(); if(!response.ok) throw new Error(body.error === "request_conflict" ? "A tentativa anterior foi recebida com outros dados. Consulte a loja para corrigir o contato, ou repita os dados originais." : body.error === "rate_limited" ? "Muitas solicitações. Tente novamente mais tarde." : "Não foi possível registrar. Seus dados foram mantidos para tentar novamente.");
-        form.innerHTML='<h3>Solicitação recebida</h3><p>A loja recebeu seu pedido e poderá avisar pelo contato informado quando o aparelho chegar.</p><button type="button">Concluir</button>';form.querySelector("button").onclick=close;
+        form.innerHTML=`<h3>Solicitação recebida</h3><p>A loja recebeu seu pedido e poderá avisar pelo contato informado ${priceDrop ? "se o preço baixar" : "quando o aparelho chegar"}.</p><button type="button">Concluir</button>`;form.querySelector("button").onclick=close;
       } catch(error) {output.textContent=error.name === "AbortError" ? "A conexão demorou. Tente novamente; evitaremos uma solicitação duplicada." : error.message; submit.disabled=false;}
       finally {formDialog.dataset.busy="false"; formDialog.querySelector('header button').disabled=false;form.querySelectorAll('input').forEach(input=>input.disabled=false);const back=form.querySelector('[data-cancel]');if(back)back.disabled=false;}
     };
@@ -148,13 +149,59 @@
       controls.addEventListener("keydown",event=>event.stopPropagation());card.append(controls);
     });refreshBar();
   };
+  const recommendationKey = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+  const recommendationsFor = item => {
+    const referencePrice = price(item);
+    if (!Number.isFinite(referencePrice) || referencePrice <= 0) return [];
+    const brand = recommendationKey(item.brand), type = recommendationKey(item.deviceType);
+    const currentCodes = new Set([item.code, ...(item.variantCodes || [])]);
+    const candidates = context.catalog.items.filter(other => {
+      const otherPrice = price(other), otherType = recommendationKey(other.deviceType);
+      return other.code && !currentCodes.has(other.code) && !(other.variantCodes || []).some(code => currentCodes.has(code))
+        && (!item.variantBaseKey || other.variantBaseKey !== item.variantBaseKey)
+        && other.availability !== "unavailable" && Number.isFinite(otherPrice) && otherPrice > 0
+        && (!type || !otherType || type === otherType);
+    }).map(other => {
+      const difference = Math.abs(price(other) - referencePrice);
+      const sameBrand = Boolean(brand && recommendationKey(other.brand) === brand);
+      const nearbyPrice = difference <= referencePrice * .25;
+      return { item: other, difference, rank: sameBrand ? nearbyPrice ? 0 : 1 : nearbyPrice ? 2 : 3,
+        reason: sameBrand ? "Da mesma marca" : nearbyPrice ? "Preço parecido" : "Outra opção da loja" };
+    }).sort((a,b) => a.rank - b.rank || a.difference - b.difference
+      || Number(a.item.availability !== "ready") - Number(b.item.availability !== "ready")
+      || String(a.item.code).localeCompare(String(b.item.code)));
+    const seen = new Set();
+    return candidates.filter(candidate => {
+      const identity = candidate.item.variantBaseKey || candidate.item.code;
+      if (seen.has(identity)) return false;
+      seen.add(identity); return true;
+    }).slice(0,3);
+  };
+  const addRecommendations = item => {
+    const recommendations = recommendationsFor(item);
+    if (!recommendations.length) return;
+    const section = document.createElement("section");
+    section.className = "discovery-alternatives discovery-recommendations";
+    section.setAttribute("aria-labelledby", "catalog-recommendations-title");
+    section.innerHTML = `<header><h2 id="catalog-recommendations-title">${item.availability === "unavailable" ? "Alternativas disponíveis" : "Você também pode gostar"}</h2><p>Outros aparelhos da loja, escolhidos por marca e preço.</p></header><div class="discovery-recommendation-list">${recommendations.map(({item:other,reason}) => {
+      const source = other.imageUrls?.[0];
+      const photo = source ? `<img src="${escape(context.imageUrl(source))}" alt="" width="64" height="72" loading="lazy" decoding="async">` : '<span class="recommendation-photo-placeholder" aria-hidden="true">📱</span>';
+      const availability = other.availability === "order" ? "Sob encomenda" : other.catalogOnly ? "Consulte o estoque" : other.availability === "ready" ? "Pronta entrega" : "Consulte a loja";
+      return `<button class="discovery-recommendation" type="button" data-code="${escape(other.code)}">${photo}<span class="recommendation-copy"><small>${escape(reason)}</small><strong>${escape(other.title)}</strong><b>${money(price(other))} <span>à vista</span></b><small>${other.purchaseKind === "Usado" ? "Seminovo" : "Novo"} · ${availability}</small></span><span class="recommendation-arrow" aria-hidden="true">›</span></button>`;
+    }).join("")}</div>`;
+    section.querySelectorAll("button").forEach(button => button.onclick = () => { location.hash = `${context.catalog.storeCode}/${button.dataset.code}`; });
+    const layout = $("#detail .detail-layout");
+    layout.classList.add("has-recommendations"); layout.append(section);
+  };
   const detail = item => {
     addHeart($("#detail .detail-gallery .picture"),item);
-    record("product",item.code); $("#detail .contact")?.addEventListener("click",()=>record("contact",item.code));
+    record("product",item.code); document.querySelectorAll("#detail .contact").forEach(contact => contact.addEventListener("click",()=>record("contact",item.code)));
+    addRecommendations(item);
     const copy=$("#detail .detail-copy");
+    if (item.availability !== "unavailable" && context.catalog.storeCode !== "mostruario") {
+      const priceAlert=document.createElement("button");priceAlert.type="button";priceAlert.className="price-drop-trigger";priceAlert.textContent="Avise-me se o preço baixar";priceAlert.onclick=()=>requestForm(item,"price-drop");copy.append(priceAlert);
+    }
     if(item.availability === "unavailable") {
-      const alternatives=context.catalog.items.filter(i=>i.code !== item.code && i.availability !== "unavailable").sort((a,b)=>Number(b.brand===item.brand)-Number(a.brand===item.brand)||Math.abs(price(a)-price(item))-Math.abs(price(b)-price(item))).slice(0,3);
-      const section=document.createElement("section"); section.className="discovery-alternatives";section.innerHTML=`<h2>Alternativas disponíveis</h2>${alternatives.length ? alternatives.map(i=>`<button type="button" data-code="${escape(i.code)}">${escape(i.title)} | ${money(price(i))}</button>`).join("") : '<p>Consulte a loja sobre outros modelos.</p>'}`; section.querySelectorAll("button").forEach(button=>button.onclick=()=>{location.hash=`${context.catalog.storeCode}/${button.dataset.code}`;});copy.append(section);
       const arrival=document.createElement("button");arrival.type="button";arrival.textContent="Avise-me quando chegar";arrival.onclick=()=>requestForm(item);copy.append(arrival);
     }
     const video=item.videoUrl;try {const url=new URL(video);if(url.protocol === "https:" && !url.username && !url.password && /\.(mp4|webm)$/i.test(url.pathname)){const player=document.createElement("video");player.controls=true;player.preload="none";player.src=url.href;player.setAttribute("aria-label","Vídeo do aparelho");copy.append(player);}}catch{}

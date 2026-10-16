@@ -4,6 +4,7 @@
   try { bootstrap = JSON.parse(document.querySelector("#catalog-bootstrap")?.textContent || "null"); } catch { /* Fall back to the public API. */ }
   const config = window.__ASSISTENCIA_CATALOG_CONFIG__ || bootstrap?.config;
   const API = config.apiUrl;
+  const tools = window.assistenciaCatalogTools;
   const catalogNode = document.querySelector("#catalog");
   const detailNode = document.querySelector("#detail");
   const statusNode = document.querySelector("#status");
@@ -45,6 +46,29 @@
     filterToggle.querySelector("span").textContent = expanded ? "−" : "＋";
   });
   let catalog = null;
+  let promotionTime = Date.now(), promotionElapsed = performance.now(), promotionTimer;
+  const promotionNow = () => promotionTime + performance.now() - promotionElapsed;
+  const schedulePromotions = () => {
+    clearTimeout(promotionTimer);
+    if (!catalog) return;
+    const now = promotionNow();
+    const boundaries = catalog.items.flatMap(item => [item.promotionStartsAt, item.promotionEndsAt]).filter(Boolean).map(Date.parse).filter(value => value > now);
+    if (boundaries.length) promotionTimer = setTimeout(refreshPromotions, Math.min(2147483647, Math.max(1, Math.min(...boundaries) - now + 30)));
+  };
+  const refreshPromotions = () => {
+    if (!catalog) return;
+    if (document.querySelector(".discovery-dialog[open]")) { promotionTimer = setTimeout(refreshPromotions, 1000); return; }
+    const changed = catalog.items.some(item => tools.effectivePricing(item, promotionNow()).discountPriceCents !== item.discountPriceCents);
+    if (changed) {
+      const scroll = detailNode.querySelector(".detail-shell")?.scrollTop || 0;
+      const variant = detailNode.querySelector('.variant-picker button[aria-pressed="true"]')?.dataset.variant;
+      render();
+      if (variant) detailNode.querySelector(`.variant-picker button[data-variant="${CSS.escape(variant)}"]`)?.click();
+      const shell = detailNode.querySelector(".detail-shell"); if (shell) shell.scrollTop = scroll;
+      renderBestSeller();
+    }
+    schedulePromotions();
+  };
   let activePhotoViewer = null;
   let photoTrigger = null;
   let helperTrigger = null;
@@ -259,12 +283,12 @@
   };
   const searchText = new WeakMap();
   const searchable = item => {
-    if (!searchText.has(item)) searchText.set(item, [item.title,item.brand,item.model,item.storage,item.ram,item.color].join(" ").toLocaleLowerCase("pt-BR"));
+    if (!searchText.has(item)) searchText.set(item, [item.title,item.brand,item.model,formatCapacity(item.storage),formatCapacity(item.ram),item.color].join(" ").toLocaleLowerCase("pt-BR"));
     return searchText.get(item);
   };
   function filtered() {
-    const query = searchNode.value.trim().toLocaleLowerCase("pt-BR");
-    const items = catalog.items.filter(item => (!kindNode.value || item.purchaseKind === kindNode.value) && (!availabilityNode.value || item.availability === availabilityNode.value) && (!storageNode.value || String(item.storage) === storageNode.value) && (!ramNode.value || String(item.ram) === ramNode.value) && (!query || searchable(item).includes(query)));
+    const query = tools.queryWords(searchNode.value);
+    const items = catalog.items.filter(item => (!kindNode.value || item.purchaseKind === kindNode.value) && (!availabilityNode.value || item.availability === availabilityNode.value) && (!storageNode.value || String(item.storage) === storageNode.value) && (!ramNode.value || String(item.ram) === ramNode.value) && tools.searchMatches(searchable(item), query));
     const availabilityRank = item => item.availability === "ready" ? 0 : item.availability === "order" ? 1 : 2;
     if (window.assistenciaDiscovery) {
       const visible = items.filter(window.assistenciaDiscovery.filter);
@@ -291,7 +315,7 @@
     bindCards();
     window.assistenciaDiscovery?.decorate();
     if (restoreCard && detailCode !== null)
-      catalogNode.querySelector(`.card[data-code="${CSS.escape(String(detailCode))}"]`)?.focus();
+      (catalogNode.querySelector(`.card[data-code="${CSS.escape(String(detailCode))}"]`) || catalogNode.querySelector(".card"))?.focus();
     detailCode = null;
   }
   const updateMobileFilterState = () => mobileFilterNodes.forEach(button => button.classList.toggle("active", button.dataset.kind === kindNode.value && button.dataset.availability === availabilityNode.value));
@@ -314,6 +338,12 @@
     const base = salePrice(item);
     const purchaseInfo = `<section class="purchase-info"><h2>Compra e disponibilidade</h2><div><span class="purchase-icon">${availabilityIcon(item)}</span><p><strong>${availabilityLabel(item)}</strong><small>${item.availability === "order" ? esc(item.orderLeadTime || "Consulte a loja para confirmar o prazo") : item.availability === "unavailable" ? "Este anúncio foi vendido ou retirado recentemente." : "Disponível para retirada ou envio após confirmação da loja"}</small></p></div>${item.warranty ? `<div><span class="purchase-icon">🛡️</span><p><strong>Garantia</strong><small>${esc(item.warranty)}</small></p></div>` : ""}${item.specsUrl ? `<a href="${esc(item.specsUrl)}" target="_blank" rel="noopener"><span class="purchase-icon">📋</span><p><strong>Ficha técnica oficial</strong><small>Consulte especificações completas do fabricante</small></p><b>↗</b></a>` : ""}</section>`;
     detailNode.innerHTML = `<div class="detail-frame"><div class="detail-shell" role="document"><button class="detail-close" type="button" aria-label="Fechar detalhes">×</button><div class="detail-layout"><div class="detail-gallery"><div class="picture zoomable"><img src="${imageUrl(images[0])}" alt="${esc(item.title)}"><div class="zoom-controls" aria-label="Controles de zoom"><button type="button" data-zoom="out" aria-label="Diminuir foto">−</button><output aria-live="polite">100%</output><button type="button" data-zoom="in" aria-label="Ampliar foto">+</button></div></div>${images.length ? `<div class="thumbnails" role="group" aria-label="Fotos do aparelho">${images.map((source,index) => `<button type="button" class="${index === 0 ? "selected" : ""}" data-image="${esc(imageUrl(source))}" aria-label="Ver foto ${index + 1}"><img src="${imageUrl(source)}" alt=""></button>`).join("")}</div>` : ""}</div><div class="detail-copy"><div class="tags"><span>${esc(item.purchaseKind)}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.featured && item.availability !== "unavailable" ? '<span class="featured-tag">Destaque</span>' : ""}${item.discountPriceCents ? '<span>Oferta</span>' : ""}</div><h1>${esc(item.title)}</h1><div class="detail-pricebox"><small>Preço à vista</small>${item.discountPriceCents || item.cashDiscountBasisPoints ? `<small class="previous-price">${money(item.priceCents)}</small>` : ""}<div class="price">${money(cashPrice(item))}</div>${item.cashDiscountBasisPoints ? `<strong class="cash-offer">${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}<span>${money(base)} no cartão</span><b>Até ${free}x de ${money(Math.ceil(base/free))} sem juros</b>${item.interestInstallment ? `<span>Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}</div>${paymentMethods(item) ? `<section class="payment-box"><small>FORMAS DE PAGAMENTO ACEITAS</small><div>${item.acceptedPaymentMethods.map(method => `<span>${esc(method)}</span>`).join("")}</div>${item.paymentMachineName ? `<p>Condições calculadas pela maquininha ${esc(item.paymentMachineName)}.</p>` : ""}</section>` : ""}${productDescription(item.description)}${purchaseInfo}<div class="facts">${facts.map(([label,value]) => `<div><small>${label}</small><strong>${esc(value)}</strong></div>`).join("")}</div>${wa && item.availability !== "unavailable" ? `<a class="contact" href="${wa}" target="_blank" rel="noopener">Quero adquirir pelo WhatsApp</a>` : item.availability === "unavailable" ? '<p class="contact-unavailable">Este aparelho não está mais disponível. Consulte a loja sobre modelos semelhantes.</p>' : '<p class="contact-unavailable">A loja ainda não informou um WhatsApp para contato.</p>'}<button class="device-helper-trigger" type="button">💬 Tirar dúvidas sobre este aparelho</button><button class="share-product" type="button">Compartilhar este aparelho</button></div></div></div></div>`;
+    detailNode.querySelector(".detail-pricebox").insertAdjacentHTML("beforeend", '<small class="catalog-price-notice">Os valores estão sujeitos a mudanças. Consulte a loja.</small>');
+    if (item.discountPriceCents && item.promotionEndsAt) detailNode.querySelector(".detail-pricebox").insertAdjacentHTML("beforeend", `<small class="promotion-validity">Oferta até ${esc(new Date(item.promotionEndsAt).toLocaleString("pt-BR", { timeZone:"America/Sao_Paulo", dateStyle:"short", timeStyle:"short" }))} · Brasília</small>`);
+    if (wa && item.availability !== "unavailable") {
+      detailNode.querySelector(".detail-frame").insertAdjacentHTML("beforeend", `<div class="mobile-contact-bar"><div><small>Preço à vista</small><strong>${money(cashPrice(item))}</strong></div><a class="contact" href="${esc(wa)}" target="_blank" rel="noopener">Consultar no WhatsApp</a></div>`);
+      detailNode.querySelector(".detail-shell").classList.add("has-mobile-contact");
+    }
     if (variants.length > 1) {
       detailNode.querySelector(".detail-gallery .picture").insertAdjacentHTML("beforebegin", `<section class="variant-picker" aria-label="Fotos das unidades"><strong>${variants.every(variant => variant.color) ? "Escolha a cor para ver as fotos" : "Compare as fotos das unidades"}</strong><div>${variants.map((variant, index) => `<button type="button" data-variant="${esc(variant.code)}" aria-pressed="${variant === selectedVariant}">${esc(variant.color || `Fotos ${index + 1}`)}</button>`).join("")}</div></section>`);
     }
@@ -397,8 +427,7 @@
       detailNode.querySelectorAll(".variant-picker button").forEach(entry => entry.setAttribute("aria-pressed", String(entry === button)));
       const colorFact = [...detailNode.querySelectorAll(".facts div")].find(fact => fact.querySelector("small")?.textContent?.includes("Cor"));
       if (colorFact) colorFact.querySelector("strong").textContent = selectedVariant.color || item.color;
-      const contact = detailNode.querySelector(".contact");
-      if (contact) contact.href = whatsappUrl(selectedVariant.color);
+      detailNode.querySelectorAll(".contact").forEach(contact => { contact.href = whatsappUrl(selectedVariant.color); });
       resetZoom();
     }));
     zoom.addEventListener("mousemove", event => { const box = zoom.getBoundingClientRect(); mainImage.style.transformOrigin = `${((event.clientX-box.left)/box.width)*100}% ${((event.clientY-box.top)/box.height)*100}%`; });
@@ -496,8 +525,15 @@
     detailNode.querySelector(".share-product").addEventListener("click", async () => { const url = catalogShareUrl(item); const title = `${item.title} — Vitrine ${catalog.storeName}`; const text = `Confira este aparelho na vitrine de ${catalog.storeName}.`; try { if (navigator.share) await navigator.share(shareContent(title,text,url)); else await copyShare(title,text,url); } catch {} });
   }
   function render() {
+    const storeContact = document.querySelector("#mobile-store-contact");
+    const storePhone = String(catalog?.storePhone || "").replace(/\D/g, "");
+    if (storeContact) {
+      storeContact.hidden = !storePhone || catalog?.storeCode === "mostruario";
+      if (storePhone) storeContact.href = `https://wa.me/${storePhone.startsWith("55") ? storePhone : `55${storePhone}`}?text=${encodeURIComponent("Olá! Gostaria de informações sobre os aparelhos da vitrine.")}`;
+    }
     if (!catalog) return;
-    window.assistenciaDiscovery?.init({ catalog, api: API, render });
+    catalog.items = catalog.items.map(item => tools.effectivePricing(item, promotionNow()));
+    window.assistenciaDiscovery?.init({ catalog, api: API, render, imageUrl });
     mobileSortNode.value = sortNode.value;
     updateMobileFilterState();
     syncRamFilterVisibility();
@@ -509,6 +545,7 @@
       renderDetail(item);
       window.assistenciaDiscovery?.detail(item);
     }
+    schedulePromotions();
   }
   async function load() {
     const [hashStoreCode] = location.hash.slice(1).split("/");
@@ -539,7 +576,8 @@
         } finally { clearTimeout(timeout); }
       }
     }
-    catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...item, warranty: displayWarranty(item) }))) };
+    promotionTime = Number.isFinite(body.catalog.serverTime) ? body.catalog.serverTime : Date.now(); promotionElapsed = performance.now();
+    catalog = { ...body.catalog, items: mergeCatalogVariants(body.catalog.items.map(item => ({ ...tools.effectivePricing(item, promotionTime), warranty: displayWarranty(item) }))) };
     updateGoogleReview();
     populateMemoryFilters();
     document.querySelector("#catalog-mode").hidden = true;
@@ -561,8 +599,11 @@
     if (ramNode.hidden) ramNode.value = "";
   };
   syncRamFilterVisibility();
-  searchNode.addEventListener("input", () => { mobileSearchNode.value = searchNode.value; renderList(); });
-  mobileSearchNode.addEventListener("input", () => { searchNode.value = mobileSearchNode.value; renderList(); });
+  let searchTimer;
+  const scheduleSearch = () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderList, 100); };
+  searchNode.addEventListener("input", () => { mobileSearchNode.value = searchNode.value; scheduleSearch(); });
+  mobileSearchNode.addEventListener("input", () => { searchNode.value = mobileSearchNode.value; scheduleSearch(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshPromotions(); });
   mobileSearchSubmitNode?.addEventListener("click", finishMobileSearch);
   kindNode.addEventListener("change", () => { updateMobileFilterState(); renderList(); }); availabilityNode.addEventListener("change", () => { updateMobileFilterState(); renderList(); }); storageNode.addEventListener("change", renderList); ramNode.addEventListener("change", renderList);
   sortNode.addEventListener("change", () => { mobileSortNode.value = sortNode.value; syncRamFilterVisibility(); renderList(); }); mobileSortNode.addEventListener("change", () => { sortNode.value = mobileSortNode.value; syncRamFilterVisibility(); renderList(); });
