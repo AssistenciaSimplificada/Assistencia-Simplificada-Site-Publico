@@ -21,10 +21,11 @@
       addText(section, "p", "Leve a referência do atendimento. Se outra pessoa for retirar, combine a autorização com a loja.");
       if (pickup.accessories) addText(section, "p", `Confira os acessórios: ${pickup.accessories}`);
     }
-    const phone = String(pickup?.phone || "").replace(/\D/g, "");
-    if (phone.length >= 8) {
+    const digits = String(pickup?.phone || "").replace(/\D/g, "");
+    const phone = /^\d{10,11}$/.test(digits) && !/^0+$/.test(digits) ? `55${digits}` : /^55\d{10,11}$/.test(digits) ? digits : "";
+    if (phone) {
       const link = document.createElement("a");link.textContent = "Falar com a loja sobre este atendimento";link.className = "customer-context-contact";link.target = "_blank";link.rel = "noopener noreferrer";
-      link.href = `https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre meu atendimento ${tracking.publicNumber || ""}, referente a ${snapshot.deviceSummary || "meu aparelho"}.`)}`;section.append(link);
+      link.href = `https://wa.me/${phone}?text=${encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre meu atendimento ${tracking.publicNumber || ""}, referente a ${snapshot.deviceSummary || "meu aparelho"}.`)}`;section.append(link);
     }
     addText(section, "h2", "Documentos do atendimento");
     const documents = (Array.isArray(snapshot.documents) ? snapshot.documents : []).slice(0, 3);

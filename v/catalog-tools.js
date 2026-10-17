@@ -1,5 +1,9 @@
 (() => {
   "use strict";
+  const capacityInGb = value => {
+    const match = /^(\d+(?:[.,]\d+)?)\s*(MB|GB|TB)?$/i.exec(String(value ?? "").trim());
+    return match ? Number(match[1].replace(",", ".")) * ({ MB: 1 / 1024, GB: 1, TB: 1024 }[String(match[2] || "GB").toUpperCase()] || 0) : 0;
+  };
   const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/([a-z])(\d)/g, "$1 $2").replace(/(\d)([a-z])/g, "$1 $2").replace(/[^a-z0-9]+/g, " ").trim();
   const aliases = { ifone: "iphone", aifone: "iphone", sansung: "samsung", xiomi: "xiaomi" };
   const queryWords = value => normalize(value).slice(0, 160).split(/\s+/).filter(Boolean).slice(0, 12).map(word => aliases[word] || word);
@@ -28,6 +32,11 @@
     return words.every(word => tokens.some(token => closeWord(word, token)));
   };
   const effectivePricing = (item, now = Date.now()) => {
+    if (Array.isArray(item.acceptedPaymentMethods) && Array.isArray(item.cashDiscountMethods)) {
+      const methods = item.cashDiscountMethods.filter(method => ["Pix", "Dinheiro"].includes(method) && item.acceptedPaymentMethods.includes(method));
+      item = { ...item, cashDiscountMethods: methods, cashDiscountBasisPoints: methods.length ? item.cashDiscountBasisPoints : 0,
+        ...(!methods.length ? { cashPriceCents: Number(item.discountPriceCents || item.priceCents) } : {}) };
+    }
     if (!item.promotionStartsAt && !item.promotionEndsAt) return item;
     const discount = Number(item.promotionPriceCents ?? item.discountPriceCents);
     const start = item.promotionStartsAt ? Date.parse(item.promotionStartsAt) : -Infinity;
@@ -45,5 +54,5 @@
   const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const dateInput = value => value && Number.isFinite(Date.parse(value)) ? dateFormat.format(new Date(value)).replace(" ", "T") : "";
   const inputDate = value => value && Number.isFinite(Date.parse(`${value}:00-03:00`)) ? new Date(`${value}:00-03:00`).toISOString() : null;
-  window.assistenciaCatalogTools = { queryWords, searchMatches, effectivePricing, dateInput, inputDate };
+  window.assistenciaCatalogTools = { capacityInGb, queryWords, searchMatches, effectivePricing, dateInput, inputDate };
 })();

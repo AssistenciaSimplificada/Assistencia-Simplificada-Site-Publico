@@ -48,6 +48,7 @@
       if (!response.ok) throw new Error(response.status === 410
         ? "Este link expirou ou já foi utilizado. Solicite um novo link à loja."
         : "Não foi possível acessar o serviço de assinatura. Tente novamente.");
+      if (action === "sign" && body?.accepted !== true) throw new Error("Não foi possível confirmar o recebimento da assinatura. Seu desenho foi mantido; tente novamente ou consulte a loja.");
       return body;
     } finally { clearTimeout(timeout); }
   }

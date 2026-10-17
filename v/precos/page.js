@@ -43,8 +43,10 @@
     const timer = setTimeout(() => controller.abort(), 30000);
     try {
       const response = await fetch(`${API}${path}`, { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(payload), cache:"no-store", signal:controller.signal });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body?.error || "service_unavailable");
+      let body;
+      try { body = await response.json(); }
+      catch { throw Object.assign(new Error("service_unavailable"), { status: response.status }); }
+      if (!response.ok) throw Object.assign(new Error(body?.error || "service_unavailable"), { status: response.status });
       if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("service_unavailable");
       if (path.endsWith("/session") && !Array.isArray(body.items)) throw new Error("service_unavailable");
       if (path.endsWith("/update") && (!Number.isInteger(body.updated) || body.updated !== payload.changes.length
@@ -139,7 +141,13 @@
     opening = true;
     form.inert = true;
     errorNode.textContent = ""; pin = pinNode.value.replace(/\D/g, "");
-    try { await open(); } catch (error) { errorNode.textContent = error.message === "editor_locked" ? "Muitas tentativas. Aguarde 15 minutos." : error.message === "editor_expired" ? "Este acesso venceu. Peça um novo link à loja." : "Link ou código incorreto."; }
+    try { await open(); } catch (error) {
+      errorNode.textContent = error.message === "editor_locked" || error.status === 429 ? "Muitas tentativas. Aguarde 15 minutos."
+        : error.message === "editor_expired" ? "Este acesso venceu. Peça um novo link à loja."
+        : error.status === 401 ? "Link ou código incorreto."
+        : error.status === 403 || error.status === 404 ? "Este acesso está indisponível. Consulte a loja para confirmar ou renovar o link."
+        : "Não foi possível conectar à vitrine agora. Seu código foi mantido; tente novamente.";
+    }
     finally { opening = false; form.inert = false; }
   });
   searchNode.addEventListener("input", () => {

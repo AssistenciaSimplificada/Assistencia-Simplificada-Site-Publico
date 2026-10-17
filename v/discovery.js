@@ -12,13 +12,16 @@
   const $ = selector => document.querySelector(selector);
   const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const money = cents => new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"}).format(Number(cents || 0)/100);
+  const capacity = value => /^\d+$/.test(String(value || "").trim()) ? `${String(value).trim()} GB` : String(value || "Não informado");
+  const capacityInGb = value => window.assistenciaCatalogTools.capacityInGb(value);
   const price = item => Number((Number(item.cashDiscountBasisPoints || 0) > 0 ? item.cashPriceCents : 0) || item.discountPriceCents || item.priceCents || 0);
   const key = () => `assistencia:favoritos:${context.catalog.storeCode}`;
   const notify = message => { $("#discovery-feedback").textContent = message; };
   const selectedItems = codes => context.catalog.items.filter(item => codes.has(item.code));
   const whatsapp = text => {
-    const phone = String(context.catalog.storePhone || "").replace(/\D/g, "");
-    return phone.length >= 8 ? `https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(text)}` : "";
+    const digits = String(context.catalog.storePhone || "").replace(/\D/g, "");
+    const phone = /^\d{10,11}$/.test(digits) && !/^0+$/.test(digits) ? `55${digits}` : /^55\d{10,11}$/.test(digits) ? digits : "";
+    return phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : "";
   };
   const record = (kind, itemCode = "") => {
     if (context.catalog.storeCode === "mostruario") return;
@@ -96,9 +99,10 @@
       try {
         const payload={action:"lead",kind,itemCode:item.code,name:form.elements.name.value.trim(),phone:form.elements.phone.value.trim(),consent:true,requestId:form.dataset.requestId || (form.dataset.requestId=crypto.randomUUID())};
         if(context.catalog.storeCode === "mostruario") throw new Error("A demonstração não envia solicitações. Abra uma vitrine de teste para experimentar o envio.");
-        const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);let response;
-        try{response=await fetch(`${context.api}/engagement/${context.catalog.storeCode}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:controller.signal});}finally{clearTimeout(timer);}
-        const body=await response.json(); if(!response.ok) throw new Error(body.error === "request_conflict" ? "A tentativa anterior foi recebida com outros dados. Consulte a loja para corrigir o contato, ou repita os dados originais." : body.error === "rate_limited" ? "Muitas solicitações. Tente novamente mais tarde." : "Não foi possível registrar. Seus dados foram mantidos para tentar novamente.");
+        const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);let response,body;
+        try{response=await fetch(`${context.api}/engagement/${context.catalog.storeCode}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:controller.signal});body=await response.json();}catch(error){if(controller.signal.aborted)throw new DOMException("Tempo limite excedido", "AbortError");throw error;}finally{clearTimeout(timer);}
+        if(!response.ok) throw new Error(body.error === "request_conflict" ? "A tentativa anterior foi recebida com outros dados. Consulte a loja para corrigir o contato, ou repita os dados originais." : body.error === "rate_limited" ? "Muitas solicitações. Tente novamente mais tarde." : "Não foi possível registrar. Seus dados foram mantidos para tentar novamente.");
+        if(body?.received !== true || body.id !== payload.requestId) throw new Error("Não foi possível confirmar o recebimento. Seus dados foram mantidos; tente novamente ou consulte a loja.");
         form.innerHTML=`<h3>Solicitação recebida</h3><p>A loja recebeu seu pedido e poderá avisar pelo contato informado ${priceDrop ? "se o preço baixar" : "quando o aparelho chegar"}.</p><button type="button">Concluir</button>`;form.querySelector("button").onclick=close;
       } catch(error) {output.textContent=error.name === "AbortError" ? "A conexão demorou. Tente novamente; evitaremos uma solicitação duplicada." : error.message; submit.disabled=false;}
       finally {formDialog.dataset.busy="false"; formDialog.querySelector('header button').disabled=false;form.querySelectorAll('input').forEach(input=>input.disabled=false);const back=form.querySelector('[data-cancel]');if(back)back.disabled=false;}
@@ -106,14 +110,14 @@
   };
   const compare = () => {
     const items=selectedItems(compared);
-    const result=open("Comparar aparelhos", `<div class="comparison-scroll"><table><caption>Informações publicadas pela loja</caption><thead><tr><th>Característica</th>${items.map(i=>`<th>${escape(i.title)}</th>`).join("")}</tr></thead><tbody>${[["À vista",i=>money(price(i))],["Memória",i=>`${i.storage || "Não informado"} GB | ${i.ram || "Não informado"} GB RAM`],["Bateria",i=>i.batteryHealth ? `${i.batteryHealth}%` : "Não informada"],["Garantia",i=>i.warranty || "Consulte a loja"],["Disponibilidade",i=>i.availability === "ready" ? "Pronta entrega" : i.availability === "order" ? "Sob encomenda" : "Indisponível"]].map(([label,value])=>`<tr><th>${label}</th>${items.map(i=>`<td>${escape(value(i))}</td>`).join("")}</tr>`).join("")}</tbody></table></div><footer class="comparison-footer"><button type="button" data-edit>Trocar aparelhos</button><button type="button" data-done>Concluir</button></footer>`);
+    const result=open("Comparar aparelhos", `<div class="comparison-scroll"><table><caption>Informações publicadas pela loja</caption><thead><tr><th>Característica</th>${items.map(i=>`<th>${escape(i.title)}</th>`).join("")}</tr></thead><tbody>${[["À vista",i=>money(price(i))],["Memória",i=>`${capacity(i.storage)} | ${capacity(i.ram)} RAM`],["Bateria",i=>i.batteryHealth ? `${i.batteryHealth}%` : "Não informada"],["Garantia",i=>i.warranty || "Consulte a loja"],["Disponibilidade",i=>i.availability === "ready" ? "Pronta entrega" : i.availability === "order" ? "Sob encomenda" : "Indisponível"]].map(([label,value])=>`<tr><th>${label}</th>${items.map(i=>`<td>${escape(value(i))}</td>`).join("")}</tr>`).join("")}</tbody></table></div><footer class="comparison-footer"><button type="button" data-edit>Trocar aparelhos</button><button type="button" data-done>Concluir</button></footer>`);
     result.querySelector("[data-edit]").onclick=()=>chooseComparison();
     result.querySelector("[data-done]").onclick=close;
   };
   const chooseComparison = initial => {
     compared=new Set([...compared].filter(code=>context.catalog.items.some(item=>item.code===code)));
     if(initial && !compared.has(initial.code)){if(compared.size >= 3)compared=new Set([initial.code]);else compared.add(initial.code);}
-    const picker=open("Escolha os aparelhos para comparar",`<p>Escolha de 2 a 3 aparelhos para ver as diferenças lado a lado.</p><label class="comparison-search">Buscar aparelho<input type="search" maxlength="80" placeholder="Nome, modelo ou cor" autocomplete="off"></label><div class="comparison-options">${context.catalog.items.map(item=>`<label class="comparison-option"><input type="checkbox" value="${escape(item.code)}" ${compared.has(item.code)?"checked":""}><span><strong>${escape(item.title)}</strong><small>${escape([item.storage && item.storage+" GB",item.ram && item.ram+" GB RAM",item.color].filter(Boolean).join(" | "))} | ${money(price(item))}</small></span></label>`).join("")}</div><p class="comparison-empty" hidden>Nenhum aparelho encontrado.</p><footer class="comparison-footer"><output role="status"></output><button type="button" data-cancel>Cancelar</button><button type="button" data-confirm disabled>Ver comparação</button></footer>`);
+    const picker=open("Escolha os aparelhos para comparar",`<p>Escolha de 2 a 3 aparelhos para ver as diferenças lado a lado.</p><label class="comparison-search">Buscar aparelho<input type="search" maxlength="80" placeholder="Nome, modelo ou cor" autocomplete="off"></label><div class="comparison-options">${context.catalog.items.map(item=>`<label class="comparison-option"><input type="checkbox" value="${escape(item.code)}" ${compared.has(item.code)?"checked":""}><span><strong>${escape(item.title)}</strong><small>${escape([item.storage && capacity(item.storage),item.ram && capacity(item.ram)+" RAM",item.color].filter(Boolean).join(" | "))} | ${money(price(item))}</small></span></label>`).join("")}</div><p class="comparison-empty" hidden>Nenhum aparelho encontrado.</p><footer class="comparison-footer"><output role="status"></output><button type="button" data-cancel>Cancelar</button><button type="button" data-confirm disabled>Ver comparação</button></footer>`);
     const boxes=[...picker.querySelectorAll('input[type="checkbox"]')],confirm=picker.querySelector("[data-confirm]");
     const update=()=>{picker.querySelector("output").textContent=`${compared.size} de 3 aparelhos escolhidos`;confirm.disabled=compared.size < 2;boxes.forEach(box=>{box.disabled=!box.checked && compared.size >= 3;});};
     boxes.forEach(box=>box.onchange=()=>{if(box.checked)compared.add(box.value);else compared.delete(box.value);update();});
@@ -216,5 +220,5 @@
       const update=()=>{const chosen=[...bundle.querySelectorAll('input:checked')].map(input=>extras[Number(input.value)]); const total=price(item)+chosen.reduce((sum,extra)=>sum+Number(extra.priceCents),0);bundle.querySelector("output").textContent=`Total à vista: ${money(total)}`;return {chosen,total};};bundle.onchange=update;update();bundle.querySelector("button").disabled=!whatsapp("teste");bundle.querySelector("button").onclick=()=>{const {chosen,total}=update();const url=whatsapp(`Olá! Tenho interesse em ${item.title}${chosen.length ? ` + ${chosen.map(e=>e.name).join(" + ")}` : ""} | Total à vista: ${money(total)}. Pode confirmar a disponibilidade?`);if(url){record("contact",item.code);window.open(url,"_blank","noopener,noreferrer");}};copy.append(bundle);
     }
   };
-  window.assistenciaDiscovery={init,decorate,detail,filter:item=>(!onlyFavorites || favorites.has(item.code)) && (!$("#budget")?.value || price(item)<=Number($("#budget").value)) && (guideUse !== "photos" || Number(item.storage)>=128)};
+  window.assistenciaDiscovery={init,decorate,detail,filter:item=>(!onlyFavorites || favorites.has(item.code)) && (!$("#budget")?.value || price(item)<=Number($("#budget").value)) && (guideUse !== "photos" || capacityInGb(item.storage)>=128)};
 })();

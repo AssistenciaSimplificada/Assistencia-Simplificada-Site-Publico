@@ -342,7 +342,8 @@
     $("submit").disabled = true;
     $("submit").textContent = "Enviando…";
     try {
-      await api({ action: "submit", token: state.token, pin: state.pin, diagnosedDefect: diagnosis, evaluationResult, serviceValues: values });
+      const confirmation = await api({ action: "submit", token: state.token, pin: state.pin, diagnosedDefect: diagnosis, evaluationResult, serviceValues: values });
+      if (confirmation?.ok !== true) throw new Error("Não foi possível confirmar o recebimento da avaliação. Seu preenchimento foi mantido; tente novamente ou consulte a assistência.");
       $("form").hidden = true;
       $("success").hidden = false;
       state.pin = "";

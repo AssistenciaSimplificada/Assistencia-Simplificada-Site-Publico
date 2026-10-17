@@ -82,13 +82,13 @@
     clearTimeout(promotionTimer);
     if (!catalog) return;
     const now = promotionNow();
-    const boundaries = catalog.items.flatMap(item => [item.promotionStartsAt, item.promotionEndsAt]).filter(Boolean).map(Date.parse).filter(value => value > now);
+    const boundaries = catalog.items.flatMap(item => [item, ...(item.variants || [])]).flatMap(item => [item.promotionStartsAt, item.promotionEndsAt]).filter(Boolean).map(Date.parse).filter(value => value > now);
     if (boundaries.length) promotionTimer = setTimeout(refreshPromotions, Math.min(2147483647, Math.max(1, Math.min(...boundaries) - now + 30)));
   };
   const refreshPromotions = () => {
     if (!catalog) return;
     if (document.querySelector(".discovery-dialog[open]")) { promotionTimer = setTimeout(refreshPromotions, 1000); return; }
-    const changed = catalog.items.some(item => tools.effectivePricing(item, promotionNow()).discountPriceCents !== item.discountPriceCents);
+    const changed = catalog.items.some(item => [item, ...(item.variants || [])].some(unit => tools.effectivePricing(unit, promotionNow()).discountPriceCents !== unit.discountPriceCents));
     if (changed) {
       const scroll = detailNode.querySelector(".detail-shell")?.scrollTop || 0;
       const variant = detailNode.querySelector('.variant-picker button[aria-pressed="true"]')?.dataset.variant;
@@ -124,7 +124,7 @@
   const imageUrl = value => String(value || "").startsWith("/v/") ? String(value) : `${API}${String(value || "").startsWith("/") ? value : `/${value}`}`;
   const rgb = hex => [1,3,5].map(index => Number.parseInt(hex.slice(index,index + 2),16));
   const formatCapacity = value => /^\d+$/.test(String(value || "").trim()) ? `${value} GB` : String(value || "");
-  const capacityNumber = value => Number(String(value || "").replace(",", ".").match(/\d+(?:\.\d+)?/)?.[0] || 0);
+  const capacityNumber = tools.capacityInGb;
   const formatBattery = value => /^\d+$/.test(String(value || "").trim()) ? `${value}%` : String(value || "");
   const displayCondition = value => value === "Usado" ? "Seminovo" : String(value || "");
   const displayWarranty = item => {
@@ -141,14 +141,16 @@
     if (brandKey === "samsung" && modelKey.startsWith("galaxy ")) modelKey = modelKey.slice(7);
     return modelKey;
   };
-  const unitVariant = item => ({ code: item.code, publicSlug:item.publicSlug, color: String(item.unitColor || "").trim() || (String(item.color || "").includes(",") || (item.availableColors || []).length > 1 ? "" : String(item.color || "").trim()), imageUrls: item.imageUrls || [] });
+  const unitVariant = item => ({ ...item, code: item.code, publicSlug:item.publicSlug, color: String(item.unitColor || "").trim() || (String(item.color || "").includes(",") || (item.availableColors || []).length > 1 ? "" : String(item.color || "").trim()), imageUrls: item.imageUrls || [] });
+  const variantBase = item => [item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|");
+  const commercialVariant = item => JSON.stringify([item.title,item.description,item.warranty,item.condition,item.conditionDetails,item.includedItems,item.batteryHealth,item.priceCents,item.discountPriceCents,item.promotionPriceCents,item.promotionStartsAt,item.promotionEndsAt,item.cashDiscountBasisPoints,item.cashDiscountMethods,item.acceptedPaymentMethods,item.paymentMachineName,item.interestFreeInstallments,item.maxInstallments,item.interestInstallments,item.interestInstallment,item.orderLeadTime,item.videoUrl,item.bundleItems].map(value => value ?? null));
   const mergeCatalogVariants = items => {
-    const physicalKeys = new Set(items.filter(item => !item.catalogOnly && item.availability !== "unavailable").map(item => [item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|")));
+    const physicalKeys = new Set(items.filter(item => !item.catalogOnly && item.availability !== "unavailable").map(item => variantBase(item)));
     const grouped = new Map();
     for (const item of items) {
-      const variantBaseKey = [item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|");
+      const variantBaseKey = variantBase(item);
       if (item.catalogOnly && physicalKeys.has(variantBaseKey)) continue;
-      const key = `${variantBaseKey}|${variantPart(item.availability)}`;
+      const key = `${variantBaseKey}|${variantPart(item.availability)}|${item.purchaseKind === "Usado" ? "used-units" : commercialVariant(item)}`;
       const current = grouped.get(key);
       if (!current) {
         grouped.set(key, { ...item, variantBaseKey, stockQuantity: 1, variantCodes: [item.code], variantSlugs:[item.publicSlug].filter(Boolean), variants: [unitVariant(item)], availableColors: [...new Set([...(item.availableColors || []), ...String(item.color || "").split(",")].map(value => value.trim()).filter(Boolean))] });
@@ -177,8 +179,8 @@
         available.variantSlugs = [...new Set([...(available.variantSlugs || []),...(unavailable.variantSlugs || [])])];
       }
     }
-    for (const item of items.filter(entry=>entry.catalogOnly && physicalKeys.has([entry.purchaseKind,entry.deviceType,entry.brand,variantModel(entry.brand,entry.model),entry.storage,entry.ram].map(variantPart).join("|")))) {
-      const base=[item.purchaseKind,item.deviceType,item.brand,variantModel(item.brand,item.model),item.storage,item.ram].map(variantPart).join("|");
+    for (const item of items.filter(entry=>entry.catalogOnly && physicalKeys.has(variantBase(entry)))) {
+      const base=variantBase(item);
       const available=variants.find(entry=>entry.variantBaseKey===base && entry.availability!=="unavailable");
       if(available){available.variantCodes=[...new Set([...available.variantCodes,item.code])];available.variantSlugs=[...new Set([...available.variantSlugs,item.publicSlug].filter(Boolean))];}
     }
@@ -190,7 +192,7 @@
   };
   const populateMemoryFilters = () => {
     const values = key => [...new Set(catalog.items.map(item => String(item[key] || "").trim()).filter(value => value && (key !== "ram" || capacityNumber(value) > 0)))]
-      .sort((a,b) => (Number(a.replace(/\D/g,"")) || 0) - (Number(b.replace(/\D/g,"")) || 0) || a.localeCompare(b,"pt-BR"));
+      .sort((a,b) => capacityNumber(a) - capacityNumber(b) || a.localeCompare(b,"pt-BR"));
     const fill = (node, key, placeholder) => {
       const selected = node.value;
       const options = values(key);
@@ -303,6 +305,8 @@
     if (bannerUrl) { bannerImage.src = imageUrl(bannerUrl); bannerImage.alt = `Banner da ${catalog.storeName}`; bannerImage.onerror = () => { banner.hidden = true; }; }
     else bannerImage.removeAttribute("src");
   }
+  const acceptsCredit = item => item.acceptedPaymentMethods?.includes("Cartão de crédito") === true;
+  const acceptsCard = item => acceptsCredit(item) || item.acceptedPaymentMethods?.includes("Cartão de débito") === true;
   const paymentMethods = item => (Array.isArray(item.acceptedPaymentMethods) ? item.acceptedPaymentMethods : []).join(" • ");
   const installmentOptions = item => {
     const base = salePrice(item);
@@ -316,7 +320,7 @@
     const base = salePrice(item);
     const cashOffer = Number(item.cashDiscountBasisPoints || 0) > 0;
     const free = Math.max(1, Number(item.interestFreeInstallments || 1));
-    return `${item.discountPriceCents || cashOffer ? `<div class="offer-heading"><small class="previous-price">${money(item.priceCents)}</small>${offerPercent(item) ? `<span class="offer-badge">-${offerPercent(item)}%</span>` : ""}</div>` : ""}<div class="price">${money(cashPrice(item))}</div>${cashOffer ? `<strong class="cash-offer">✨ ${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}<span class="card-price">💳 ${money(base)} no cartão</span><span class="installment-line">Até ${free}x de ${money(Math.ceil(base/free))} sem juros</span>${item.interestInstallment ? `<span class="installment-line muted">Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}${paymentMethods(item) ? `<small class="payment-methods">${esc(paymentMethods(item))}</small>` : ""}`;
+    return `${item.discountPriceCents || cashOffer ? `<div class="offer-heading"><small class="previous-price">${money(item.priceCents)}</small>${offerPercent(item) ? `<span class="offer-badge">-${offerPercent(item)}%</span>` : ""}</div>` : ""}<div class="price">${money(cashPrice(item))}</div>${cashOffer ? `<strong class="cash-offer">✨ ${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}${acceptsCard(item) ? `<span class="card-price">💳 ${money(base)} no cartão</span>` : ""}${acceptsCredit(item) ? `<span class="installment-line">Até ${free}x de ${money(Math.ceil(base/free))} sem juros</span>` : ""}${acceptsCredit(item) && item.interestInstallment ? `<span class="installment-line muted">Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}${paymentMethods(item) ? `<small class="payment-methods">${esc(paymentMethods(item))}</small>` : ""}`;
   };
   const card = item => `<article class="card ${item.featured ? "featured" : ""} ${item.availability === "unavailable" ? "unavailable" : ""}" data-code="${esc(item.code)}" tabindex="0"><div class="picture"><img loading="lazy" decoding="async" src="${imageUrl(item.imageUrls[0])}" alt="${esc(item.title)}"></div><div class="content"><div class="tags"><span>📱 ${esc(displayCondition(item.purchaseKind))}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.storage ? `<span>💾 ${esc(formatCapacity(item.storage))}</span>` : ""}${item.availability !== "unavailable" && Number(item.stockQuantity || 1) > 1 ? `<span>📦 ${item.stockQuantity} unidades</span>` : ""}${item.batteryHealth ? `<span>🔋 ${esc(formatBattery(item.batteryHealth))}</span>` : ""}</div><h2>${esc(item.title)}</h2><p>${item.color ? `🎨 ${esc(item.color)}` : ""}${item.color && item.condition && item.condition !== item.purchaseKind ? " • " : ""}${item.condition && item.condition !== item.purchaseKind ? esc(item.condition) : ""}</p>${item.availability === "order" ? `<small class="order-lead">🚚 Prazo: ${esc(item.orderLeadTime || "consulte a loja")}</small>` : ""}<div class="card-payment">${cardPaymentHtml(item)}</div></div></article>`;
   function renderBestSeller() {
@@ -347,7 +351,7 @@
       const visible = items.filter(window.assistenciaDiscovery.filter);
       items.splice(0, items.length, ...visible);
     }
-    return items.sort((a,b) => sortNode.value === "lowest" ? salePrice(a)-salePrice(b) : sortNode.value === "highest" ? salePrice(b)-salePrice(a) : sortNode.value === "ram" ? (capacityNumber(b.ram)-capacityNumber(a.ram) || capacityNumber(b.storage)-capacityNumber(a.storage) || availabilityRank(a)-availabilityRank(b)) : sortNode.value === "recent" ? b.updatedAt.localeCompare(a.updatedAt) : Number(b.featured)-Number(a.featured) || availabilityRank(a)-availabilityRank(b) || Number(b.salesCount || 0)-Number(a.salesCount || 0) || b.updatedAt.localeCompare(a.updatedAt));
+    return items.sort((a,b) => sortNode.value === "lowest" ? cashPrice(a)-cashPrice(b) : sortNode.value === "highest" ? cashPrice(b)-cashPrice(a) : sortNode.value === "ram" ? (capacityNumber(b.ram)-capacityNumber(a.ram) || capacityNumber(b.storage)-capacityNumber(a.storage) || availabilityRank(a)-availabilityRank(b)) : sortNode.value === "recent" ? b.updatedAt.localeCompare(a.updatedAt) : Number(b.featured)-Number(a.featured) || availabilityRank(a)-availabilityRank(b) || Number(b.salesCount || 0)-Number(a.salesCount || 0) || b.updatedAt.localeCompare(a.updatedAt));
   }
   function renderList() {
     const restoreCard = !detailNode.hidden;
@@ -377,13 +381,15 @@
     closePhotoViewer();
     if(friendlyUrls){navigateCategory();render();}else location.hash = catalog.storeCode;
   }
-  function renderDetail(item) {
+  function renderDetail(item, selectedCodeOverride) {
+    const group = item;
     detailCode = item.code;
     detailNode.hidden = false; document.body.classList.add("detail-open");
     const variants = (item.variants || []).filter(variant => variant.imageUrls?.length);
     const selectedSlug=pathSelection()?.[2];
-    const selectedCode=location.hash.slice(1).split("/")[1];
-    let selectedVariant = variants.find(variant=>(selectedSlug && variant.publicSlug === selectedSlug) || (selectedCode && variant.code === selectedCode)) || variants[0] || null;
+    const selectedCode=selectedCodeOverride || location.hash.slice(1).split("/")[1];
+    let selectedVariant = variants.find(variant=>selectedCodeOverride ? variant.code === selectedCodeOverride : (selectedSlug && variant.publicSlug === selectedSlug) || (selectedCode && variant.code === selectedCode)) || variants.find(variant=>variant.code === item.code) || variants[0] || null;
+    if (selectedVariant) item = { ...item, ...tools.effectivePricing(selectedVariant, promotionNow()), color: selectedVariant.color || (group.availableColors || []).join(", ") || group.color, variants: group.variants, variantCodes: group.variantCodes, variantSlugs: group.variantSlugs, stockQuantity: group.stockQuantity };
     const whatsappUrl = color => storeWhatsAppUrl(`Olá! Quero adquirir o aparelho ${item.title}${color ? ` na cor ${color}` : ""}, anunciado por ${money(cashPrice(item))}. ${item.availability === "order" ? "Qual é o prazo para encomenda?" : item.catalogOnly ? "Pode confirmar se há unidade pronta para entrega?" : "Ele ainda está disponível para pronta entrega?"}`);
     const wa = whatsappUrl(selectedVariant?.color || "");
     const facts = [["Condição",displayCondition(item.purchaseKind)],["Armazenamento",formatCapacity(item.storage)],["Cor",item.color],["Garantia",item.warranty],["Bateria",formatBattery(item.batteryHealth)],["Memória RAM",formatCapacity(item.ram)],["Itens inclusos",item.includedItems],["Detalhes do estado",item.conditionDetails]].filter(([,value]) => value);
@@ -391,7 +397,7 @@
     const free = Math.max(1, Number(item.interestFreeInstallments || 1));
     const base = salePrice(item);
     const purchaseInfo = `<section class="purchase-info"><h2>Compra e disponibilidade</h2><div><span class="purchase-icon">${availabilityIcon(item)}</span><p><strong>${availabilityLabel(item)}</strong><small>${item.availability === "order" ? esc(item.orderLeadTime || "Consulte a loja para confirmar o prazo") : item.availability === "unavailable" ? "Este anúncio foi vendido ou retirado recentemente." : "Disponível para retirada ou envio após confirmação da loja"}</small></p></div>${item.warranty ? `<div><span class="purchase-icon">🛡️</span><p><strong>Garantia</strong><small>${esc(item.warranty)}</small></p></div>` : ""}${item.specsUrl ? `<a href="${esc(item.specsUrl)}" target="_blank" rel="noopener"><span class="purchase-icon">📋</span><p><strong>Ficha técnica oficial</strong><small>Consulte especificações completas do fabricante</small></p><b>↗</b></a>` : ""}</section>`;
-    detailNode.innerHTML = `<div class="detail-frame"><div class="detail-shell" role="document"><button class="detail-close" type="button" aria-label="Fechar detalhes">×</button><div class="detail-layout"><div class="detail-gallery"><div class="picture zoomable"><img src="${imageUrl(images[0])}" alt="${esc(item.title)}"><div class="zoom-controls" aria-label="Controles de zoom"><button type="button" data-zoom="out" aria-label="Diminuir foto">−</button><output aria-live="polite">100%</output><button type="button" data-zoom="in" aria-label="Ampliar foto">+</button></div></div>${images.length ? `<div class="thumbnails" role="group" aria-label="Fotos do aparelho">${images.map((source,index) => `<button type="button" class="${index === 0 ? "selected" : ""}" data-image="${esc(imageUrl(source))}" aria-label="Ver foto ${index + 1}"><img src="${imageUrl(source)}" alt=""></button>`).join("")}</div>` : ""}</div><div class="detail-copy"><div class="tags"><span>${esc(item.purchaseKind)}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.featured && item.availability !== "unavailable" ? '<span class="featured-tag">Destaque</span>' : ""}${item.discountPriceCents ? '<span>Oferta</span>' : ""}</div><h1>${esc(item.title)}</h1><div class="detail-pricebox"><small>Preço à vista</small>${item.discountPriceCents || item.cashDiscountBasisPoints ? `<small class="previous-price">${money(item.priceCents)}</small>` : ""}<div class="price">${money(cashPrice(item))}</div>${item.cashDiscountBasisPoints ? `<strong class="cash-offer">${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}<span>${money(base)} no cartão</span><b>Até ${free}x de ${money(Math.ceil(base/free))} sem juros</b>${item.interestInstallment ? `<span>Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}</div>${paymentMethods(item) ? `<section class="payment-box"><small>FORMAS DE PAGAMENTO ACEITAS</small><div>${item.acceptedPaymentMethods.map(method => `<span>${esc(method)}</span>`).join("")}</div>${item.paymentMachineName ? `<p>Condições calculadas pela maquininha ${esc(item.paymentMachineName)}.</p>` : ""}</section>` : ""}${productDescription(item.description)}${purchaseInfo}<div class="facts">${facts.map(([label,value]) => `<div><small>${label}</small><strong>${esc(value)}</strong></div>`).join("")}</div>${wa && item.availability !== "unavailable" ? `<a class="contact" href="${wa}" target="_blank" rel="noopener">Quero adquirir pelo WhatsApp</a>` : item.availability === "unavailable" ? '<p class="contact-unavailable">Este aparelho não está mais disponível. Consulte a loja sobre modelos semelhantes.</p>' : '<p class="contact-unavailable">A loja ainda não informou um WhatsApp para contato.</p>'}<button class="device-helper-trigger" type="button">💬 Tirar dúvidas sobre este aparelho</button><button class="share-product" type="button">Compartilhar este aparelho</button></div></div></div></div>`;
+    detailNode.innerHTML = `<div class="detail-frame"><div class="detail-shell" role="document"><button class="detail-close" type="button" aria-label="Fechar detalhes">×</button><div class="detail-layout"><div class="detail-gallery"><div class="picture zoomable"><img src="${imageUrl(images[0])}" alt="${esc(item.title)}"><div class="zoom-controls" aria-label="Controles de zoom"><button type="button" data-zoom="out" aria-label="Diminuir foto">−</button><output aria-live="polite">100%</output><button type="button" data-zoom="in" aria-label="Ampliar foto">+</button></div></div>${images.length ? `<div class="thumbnails" role="group" aria-label="Fotos do aparelho">${images.map((source,index) => `<button type="button" class="${index === 0 ? "selected" : ""}" data-image="${esc(imageUrl(source))}" aria-label="Ver foto ${index + 1}"><img src="${imageUrl(source)}" alt=""></button>`).join("")}</div>` : ""}</div><div class="detail-copy"><div class="tags"><span>${esc(item.purchaseKind)}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.featured && item.availability !== "unavailable" ? '<span class="featured-tag">Destaque</span>' : ""}${item.discountPriceCents ? '<span>Oferta</span>' : ""}</div><h1>${esc(item.title)}</h1><div class="detail-pricebox"><small>Preço à vista</small>${item.discountPriceCents || item.cashDiscountBasisPoints ? `<small class="previous-price">${money(item.priceCents)}</small>` : ""}<div class="price">${money(cashPrice(item))}</div>${item.cashDiscountBasisPoints ? `<strong class="cash-offer">${percent(item.cashDiscountBasisPoints)} OFF no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}${acceptsCard(item) ? `<span>${money(base)} no cartão</span>` : ""}${acceptsCredit(item) ? `<b>Até ${free}x de ${money(Math.ceil(base/free))} sem juros</b>` : ""}${acceptsCredit(item) && item.interestInstallment ? `<span>Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}</div>${paymentMethods(item) ? `<section class="payment-box"><small>FORMAS DE PAGAMENTO ACEITAS</small><div>${item.acceptedPaymentMethods.map(method => `<span>${esc(method)}</span>`).join("")}</div>${acceptsCard(item) && item.paymentMachineName ? `<p>Condições calculadas pela maquininha ${esc(item.paymentMachineName)}.</p>` : ""}</section>` : ""}${productDescription(item.description)}${purchaseInfo}<div class="facts">${facts.map(([label,value]) => `<div><small>${label}</small><strong>${esc(value)}</strong></div>`).join("")}</div>${wa && item.availability !== "unavailable" ? `<a class="contact" href="${wa}" target="_blank" rel="noopener">Quero adquirir pelo WhatsApp</a>` : item.availability === "unavailable" ? '<p class="contact-unavailable">Este aparelho não está mais disponível. Consulte a loja sobre modelos semelhantes.</p>' : '<p class="contact-unavailable">A loja ainda não informou um WhatsApp para contato.</p>'}<button class="device-helper-trigger" type="button">💬 Tirar dúvidas sobre este aparelho</button><button class="share-product" type="button">Compartilhar este aparelho</button></div></div></div></div>`;
     detailNode.querySelector(".detail-pricebox").insertAdjacentHTML("beforeend", '<small class="catalog-price-notice">Os valores estão sujeitos a mudanças. Consulte a loja.</small>');
     if (item.discountPriceCents && item.promotionEndsAt) detailNode.querySelector(".detail-pricebox").insertAdjacentHTML("beforeend", `<small class="promotion-validity">Oferta até ${esc(new Date(item.promotionEndsAt).toLocaleString("pt-BR", { timeZone:"America/Sao_Paulo", dateStyle:"short", timeStyle:"short" }))} · Brasília</small>`);
     if (wa && item.availability !== "unavailable") {
@@ -476,15 +482,8 @@
       selectedVariant = variants.find(variant => variant.code === button.dataset.variant) || selectedVariant;
       const variantPath=friendlyUrls && friendlyProductPath({...item,...selectedVariant});
       if(variantPath)history.replaceState(null,"",variantPath+location.search);
-      const photos = selectedVariant.imageUrls.filter(Boolean);
-      mainImage.src = imageUrl(photos[0]);
-      mainImage.alt = selectedVariant.color ? `${item.title} na cor ${selectedVariant.color}` : item.title;
-      if (thumbnails) thumbnails.innerHTML = photos.map((source,index) => `<button type="button" class="${index === 0 ? "selected" : ""}" data-image="${esc(imageUrl(source))}" aria-label="Ver foto ${index + 1}${selectedVariant.color ? ` da cor ${esc(selectedVariant.color)}` : ""}"><img src="${imageUrl(source)}" alt=""></button>`).join("");
-      detailNode.querySelectorAll(".variant-picker button").forEach(entry => entry.setAttribute("aria-pressed", String(entry === button)));
-      const colorFact = [...detailNode.querySelectorAll(".facts div")].find(fact => fact.querySelector("small")?.textContent?.includes("Cor"));
-      if (colorFact) colorFact.querySelector("strong").textContent = selectedVariant.color || item.color;
-      detailNode.querySelectorAll(".contact").forEach(contact => { contact.href = whatsappUrl(selectedVariant.color); });
-      resetZoom();
+      if (!variantPath) history.replaceState(null,"",location.pathname+location.search+`#${catalog.storeCode}/${selectedVariant.code}`);
+      renderDetail(group, selectedVariant.code);
     }));
     zoom.addEventListener("mousemove", event => { const box = zoom.getBoundingClientRect(); mainImage.style.transformOrigin = `${((event.clientX-box.left)/box.width)*100}% ${((event.clientY-box.top)/box.height)*100}%`; });
     zoom.querySelector('[data-zoom="in"]').addEventListener("click", event => { event.stopPropagation(); applyZoom(zoomLevel + .5); });
@@ -584,7 +583,7 @@
   function render() {
     updateStoreContacts();
     if (!catalog) return;
-    catalog.items = catalog.items.map(item => tools.effectivePricing(item, promotionNow()));
+    catalog.items = catalog.items.map(item => ({ ...tools.effectivePricing(item, promotionNow()), variants: (item.variants || []).map(unit => tools.effectivePricing(unit, promotionNow())) }));
     window.assistenciaDiscovery?.init({ catalog, api: API, render, imageUrl, navigateItem: friendlyUrls ? navigateItem : null, navigateCategory, catalogHomeUrl });
     if(!routeInitialized){routeInitialized=true;applyPathCategory();}
     mobileSortNode.value = sortNode.value;
