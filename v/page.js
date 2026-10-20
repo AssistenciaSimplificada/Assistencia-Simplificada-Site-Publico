@@ -404,6 +404,11 @@
       detailNode.querySelector(".detail-frame").insertAdjacentHTML("beforeend", `<div class="mobile-contact-bar"><div><small>Preço à vista</small><strong>${money(cashPrice(item))}</strong></div><a class="contact" href="${esc(wa)}" target="_blank" rel="noopener">Consultar no WhatsApp</a></div>`);
       detailNode.querySelector(".detail-shell").classList.add("has-mobile-contact");
     }
+    if (wa && item.availability === "unavailable") {
+      const availabilityUrl = storeWhatsAppUrl(`Olá! Vi o ${item.title} na vitrine e gostaria de consultar disponibilidade ou um modelo semelhante.`);
+      detailNode.querySelector(".detail-frame").insertAdjacentHTML("beforeend", `<div class="mobile-contact-bar mobile-contact-unavailable"><div><small>Modelo indisponível</small><strong>Fale com a loja</strong></div><a class="contact" href="${esc(availabilityUrl)}" target="_blank" rel="noopener">Consultar disponibilidade</a></div>`);
+      detailNode.querySelector(".detail-shell").classList.add("has-mobile-contact");
+    }
     if (variants.length > 1) {
       detailNode.querySelector(".detail-gallery .picture").insertAdjacentHTML("beforebegin", `<section class="variant-picker" aria-label="Fotos das unidades"><strong>${variants.every(variant => variant.color) ? "Escolha a cor para ver as fotos" : "Compare as fotos das unidades"}</strong><div>${variants.map((variant, index) => `<button type="button" data-variant="${esc(variant.code)}" aria-pressed="${variant === selectedVariant}">${esc(variant.color || `Fotos ${index + 1}`)}</button>`).join("")}</div></section>`);
     }

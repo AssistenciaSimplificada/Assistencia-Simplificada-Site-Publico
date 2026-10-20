@@ -59,3 +59,13 @@ button:focus-visible{outline:3px solid var(--text);outline-offset:3px}
 #submit-error{padding:14px;border:1px solid var(--danger);border-radius:12px;color:#ffabb0}
 @media(max-width:380px){.facts{grid-template-columns:1fr}}
 @media(max-width:560px){.service-option-fields,.service-outcome-fields{grid-template-columns:1fr}.section-heading{display:grid}.section-heading>small{width:max-content}}
+
+/* Ficha técnica: separa decisão, dados do aparelho e registro do técnico. */
+.card{box-shadow:0 12px 34px rgba(0,0,0,.2)}
+.service{display:grid;gap:10px}
+.service>strong{font-size:1rem;line-height:1.35}
+.facts div{padding:12px;border:1px solid color-mix(in srgb,var(--line) 86%,transparent);border-radius:12px;background:rgba(6,15,19,.28)}
+.facts div:has(#reported){padding:0;border:0;background:transparent}
+button:not(:disabled):hover{filter:brightness(1.08)}
+@media(max-width:560px){main{width:min(100% - 20px,680px);padding-top:18px}.card{padding:16px;border-radius:15px}.facts{gap:10px}.facts div{padding:10px}button{min-height:48px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}

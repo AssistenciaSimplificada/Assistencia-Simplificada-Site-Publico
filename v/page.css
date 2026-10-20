@@ -205,6 +205,15 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 @media(max-width:760px){.detail .picture{height:min(280px,34dvh)}.detail-gallery .thumbnails button{width:54px;height:54px;flex-basis:54px}.detail-copy .purchase-info{margin:16px 0}}
 .mobile-contact-bar{display:none}.promotion-validity{color:var(--blue);font-weight:650}
 @media(max-width:760px){.detail-frame{position:relative}.detail-shell.has-mobile-contact{padding-bottom:100px}.mobile-contact-bar{position:absolute;z-index:3;bottom:0;left:0;right:0;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 16px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line);border-radius:0 0 16px 16px;background:var(--card);box-shadow:0 -4px 14px rgb(24 33 43 / 8%)}.mobile-contact-bar>div{display:grid;gap:3px;flex-shrink:0}.mobile-contact-bar small{font-size:.65rem;color:var(--muted)}.mobile-contact-bar strong{font-size:.94rem}.mobile-contact-bar .contact{padding:12px;font-size:.75rem;min-height:44px}.detail:has(.mobile-contact-bar){padding-bottom:max(10px,env(safe-area-inset-bottom))}}
+.mobile-contact-unavailable{background:#fffaf0}.mobile-contact-unavailable .contact{background:#8c5a00;border-color:#704800}.mobile-contact-unavailable .contact:hover{background:#714800}
+
+/* Hierarquia uniforme: leitura rápida no desktop e ações alcançáveis no celular. */
+.card,.detail-pricebox,.purchase-info,.payment-box,.facts>div{transition:border-color .16s ease,box-shadow .16s ease}
+.card:hover{border-color:color-mix(in srgb,var(--store-primary) 48%,var(--line));box-shadow:0 10px 24px rgba(27,43,61,.11)}
+.purchase-info,.payment-box{border-radius:14px}
+.detail-copy>.contact,.detail-copy>.share-product,.detail-copy>.device-helper-trigger{font-weight:800;letter-spacing:.005em}
+@media(max-width:760px){.mobile-contact-bar{position:fixed;z-index:24;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));margin:0;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 8px 22px rgb(24 33 43 / 18%)}.detail-shell.has-mobile-contact{padding-bottom:100px}.mobile-contact-bar .contact{flex:1;text-align:center}.card:hover{box-shadow:0 3px 12px rgba(27,43,61,.035)}}
+@media(prefers-reduced-motion:reduce){.card,.detail-pricebox,.purchase-info,.payment-box,.facts>div{transition:none}}
 
 .mobile-store-contact{display:none}
 @media(max-width:760px){.mobile-store-contact:not([hidden]){display:block;position:fixed;z-index:20;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:calc(100vw - 28px);padding:13px 18px;border-radius:24px;background:#0a8759;color:#fff;text-decoration:none;font-size:.85rem;font-weight:750;box-shadow:0 4px 16px rgb(0 0 0 / 18%)}body:has(#detail:not([hidden])) .mobile-store-contact,body:has(dialog[open]) .mobile-store-contact{display:none}body:has(.mobile-store-contact:not([hidden]))>footer{padding-bottom:90px}}

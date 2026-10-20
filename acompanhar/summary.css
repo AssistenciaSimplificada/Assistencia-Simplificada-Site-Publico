@@ -84,6 +84,21 @@
   opacity: 1;
 }
 
+/* Resumo: valores em blocos legíveis e ações com área de toque consistente. */
+.customer-summary {
+  padding: clamp(16px, 3vw, 26px);
+  border: 1px solid var(--portal-line, var(--line));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--portal-surface, var(--surface)) 94%, transparent);
+}
+.customer-payment-summary > div { box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.customer-context-contact { margin-top: 4px; }
+@media (max-width: 640px) {
+  .customer-payment-summary { gap: 8px; }
+  .customer-payment-summary > div { padding: 13px; }
+  .customer-summary button,.customer-context-contact { min-height: 48px; }
+}
+
 @media (max-width: 430px) {
   .customer-payment-summary {
     grid-template-columns: 1fr;
