@@ -1,0 +1,1 @@
+import{r as e}from"./framework-DTZGTDtF.js?v=13.1.9";import{t}from"./link-CcHadpLM.js?v=13.1.9";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

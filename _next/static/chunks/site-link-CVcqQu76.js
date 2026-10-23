@@ -1,1 +1,0 @@
-import{r as e}from"./framework-DTZGTDtF.js?v=13.1.8";import{t}from"./link-D-Gpg3tk.js?v=13.1.8";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};
