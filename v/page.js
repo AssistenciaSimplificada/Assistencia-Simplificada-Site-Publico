@@ -100,11 +100,13 @@
     schedulePromotions();
   };
   let activePhotoViewer = null;
+  let disposePhotoInteraction = () => {};
   let photoTrigger = null;
   let helperTrigger = null;
   let detailCode = null;
   const closePhotoViewer = () => {
     const wasOpen = Boolean(activePhotoViewer);
+    disposePhotoInteraction(); disposePhotoInteraction = () => {};
     activePhotoViewer?.remove();
     activePhotoViewer = null;
     document.body.classList.remove("photo-viewer-open");
@@ -454,6 +456,7 @@
     const closeButton = detailNode.querySelector(".detail-close");
     closeButton.addEventListener("click", closeDetail); closeButton.focus();
     const mainImage = detailNode.querySelector(".detail-gallery .picture img");
+    mainImage.draggable = false;
     const zoom = detailNode.querySelector(".zoomable");
     const zoomOutput = zoom.querySelector("output");
     let zoomLevel = 1;
@@ -490,11 +493,12 @@
       if (!variantPath) history.replaceState(null,"",location.pathname+location.search+`#${catalog.storeCode}/${selectedVariant.code}`);
       renderDetail(group, selectedVariant.code);
     }));
-    zoom.addEventListener("mousemove", event => { const box = zoom.getBoundingClientRect(); mainImage.style.transformOrigin = `${((event.clientX-box.left)/box.width)*100}% ${((event.clientY-box.top)/box.height)*100}%`; });
+    zoom.addEventListener("mousemove", event => { if (event.target.closest(".zoom-controls")) return; const box = zoom.getBoundingClientRect(); mainImage.style.transformOrigin = `${((event.clientX-box.left)/box.width)*100}% ${((event.clientY-box.top)/box.height)*100}%`; });
     zoom.querySelector('[data-zoom="in"]').addEventListener("click", event => { event.stopPropagation(); applyZoom(zoomLevel + .5); });
     zoom.querySelector('[data-zoom="out"]').addEventListener("click", event => { event.stopPropagation(); applyZoom(zoomLevel - .5); });
-    zoom.addEventListener("dblclick", () => applyZoom(zoomLevel > 1 ? 1 : 2));
+    zoom.addEventListener("dblclick", event => { if (!event.target.closest(".zoom-controls")) applyZoom(zoomLevel > 1 ? 1 : 2); });
     zoom.addEventListener("touchstart", event => {
+      if (event.target.closest(".zoom-controls")) { lastTap = 0; return; }
       if (event.touches.length === 2) {
         panTouch = null;
         lastTap = 0;
@@ -508,6 +512,8 @@
       }
     }, { passive:true });
     zoom.addEventListener("touchmove", event => {
+      if (event.target.closest(".zoom-controls")) return;
+      lastTap = 0;
       if (event.touches.length === 2 && pinchStart) {
         event.preventDefault();
         suppressViewerClickUntil = Date.now() + 500;
@@ -529,6 +535,10 @@
       if (event.touches.length < 2) pinchStart = 0;
       panTouch = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
     });
+    zoom.addEventListener("touchcancel", () => {
+      pinchStart = 0; panTouch = null; lastTap = 0;
+      suppressViewerClickUntil = Date.now() + 500;
+    });
     const openPhotoViewer = () => {
       closePhotoViewer();
       photoTrigger = document.activeElement;
@@ -543,6 +553,23 @@
       viewer.innerHTML = '<div class="photo-viewer-toolbar"><span class="photo-viewer-count" aria-live="polite"></span><button type="button" data-action="close" aria-label="Fechar foto">×</button></div><div class="photo-viewer-stage"><button type="button" data-action="previous" aria-label="Foto anterior">‹</button><img alt=""><button type="button" data-action="next" aria-label="Próxima foto">›</button></div><div class="photo-viewer-controls"><button type="button" data-action="out" aria-label="Diminuir foto ampliada">−</button><output aria-live="polite">100%</output><button type="button" data-action="in" aria-label="Ampliar foto ampliada">+</button></div>';
       const stage = viewer.querySelector(".photo-viewer-stage");
       const photo = stage.querySelector("img");
+      photo.draggable = false;
+      const pointers = new Map();
+      const stopInteraction = () => {
+        pointerStart = null; pinchDistance = 0;
+        const captured = [...pointers.keys()]; pointers.clear();
+        for (const id of captured) if (photo.hasPointerCapture(id)) photo.releasePointerCapture(id);
+      };
+      const stopWhenHidden = () => { if (document.hidden) stopInteraction(); };
+      window.addEventListener("blur", stopInteraction);
+      window.addEventListener("resize", stopInteraction);
+      document.addEventListener("visibilitychange", stopWhenHidden);
+      disposePhotoInteraction = () => {
+        stopInteraction();
+        window.removeEventListener("blur", stopInteraction);
+        window.removeEventListener("resize", stopInteraction);
+        document.removeEventListener("visibilitychange", stopWhenHidden);
+      };
       const count = viewer.querySelector(".photo-viewer-count");
       const output = viewer.querySelector("output");
       const apply = () => {
@@ -555,6 +582,7 @@
       };
       const setZoom = value => { level = Math.max(1, Math.min(4, value)); if (level === 1) panX = panY = 0; apply(); };
       const show = offset => {
+        stopInteraction();
         index = (index + offset + images.length) % images.length;
         photo.src = imageUrl(images[index]); photo.alt = `${item.title}, foto ${index + 1} de ${images.length}`;
         count.textContent = `${index + 1} de ${images.length}`;
@@ -567,13 +595,35 @@
       viewer.querySelector('[data-action="in"]').addEventListener("click", () => setZoom(level + .5));
       viewer.addEventListener("click", event => { if (event.target === viewer) closePhotoViewer(); });
       stage.addEventListener("dblclick", event => { if (event.target === photo) setZoom(level > 1 ? 1 : 2); });
-      stage.addEventListener("pointerdown", event => { if (event.target !== photo) return; pointerStart = { x: event.clientX, y: event.clientY, panX, panY }; photo.setPointerCapture(event.pointerId); });
-      stage.addEventListener("pointermove", event => { if (!pointerStart || level === 1 || pinchDistance) return; panX = pointerStart.panX + event.clientX - pointerStart.x; panY = pointerStart.panY + event.clientY - pointerStart.y; apply(); });
-      stage.addEventListener("pointerup", event => { if (!pointerStart) return; const dx = event.clientX - pointerStart.x; const dy = event.clientY - pointerStart.y; if (level === 1 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) show(dx < 0 ? 1 : -1); pointerStart = null; });
-      stage.addEventListener("pointercancel", () => { pointerStart = null; });
+      stage.addEventListener("pointerdown", event => {
+        if (event.target !== photo || event.button !== 0) return;
+        event.preventDefault();
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pointers.size === 1 && !pinchDistance) pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY, panX, panY };
+        photo.setPointerCapture(event.pointerId);
+      });
+      stage.addEventListener("pointermove", event => {
+        if (pointers.has(event.pointerId)) pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (!pointerStart || pointerStart.id !== event.pointerId || level === 1 || pinchDistance) return;
+        event.preventDefault(); panX = pointerStart.panX + event.clientX - pointerStart.x; panY = pointerStart.panY + event.clientY - pointerStart.y; apply();
+      });
+      stage.addEventListener("pointerup", event => {
+        pointers.delete(event.pointerId);
+        if (pinchDistance) {
+          const remaining = pointers.entries().next().value;
+          pointerStart = remaining ? { id: remaining[0], ...remaining[1], panX, panY } : null;
+          return;
+        }
+        if (!pointerStart || pointerStart.id !== event.pointerId) return;
+        const dx = event.clientX - pointerStart.x, dy = event.clientY - pointerStart.y; pointerStart = null;
+        if (level === 1 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) show(dx < 0 ? 1 : -1);
+      });
+      stage.addEventListener("pointercancel", stopInteraction);
+      stage.addEventListener("lostpointercapture", event => { pointers.delete(event.pointerId); if (pointerStart?.id === event.pointerId) pointerStart = null; });
       stage.addEventListener("touchstart", event => { if (event.touches.length === 2) { pinchDistance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); pinchLevel = level; pointerStart = null; } }, { passive: true });
       stage.addEventListener("touchmove", event => { if (event.touches.length !== 2 || !pinchDistance) return; event.preventDefault(); const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); setZoom(pinchLevel * distance / pinchDistance); }, { passive: false });
       stage.addEventListener("touchend", event => { if (event.touches.length < 2) pinchDistance = 0; });
+      stage.addEventListener("touchcancel", stopInteraction);
       document.body.append(viewer);
       document.body.classList.add("photo-viewer-open");
       activePhotoViewer = viewer;

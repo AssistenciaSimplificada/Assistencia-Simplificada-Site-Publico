@@ -653,6 +653,7 @@
     document.body.classList.add("approval-signature-open");
   };
   const closeApprovalSignature = () => {
+    stopSigning();
     $("approval-signature").classList.remove("is-fullscreen");
     document.body.classList.remove("approval-signature-open");
   };
@@ -681,6 +682,7 @@
     signatureContext.lineJoin = "round";
   }
   let signing = false;
+  let signingPointerId = null;
   const signaturePoint = (event) => {
     const bounds = signatureCanvas.getBoundingClientRect();
     return {
@@ -690,6 +692,10 @@
   };
   signatureCanvas.addEventListener("pointerdown", (event) => {
     event.preventDefault();
+    if (signingPointerId !== null || event.button !== 0 || state.approving) return;
+    signingPointerId = event.pointerId;
+    document.body.classList.add("signature-drawing");
+    window.getSelection()?.removeAllRanges();
     signing = true;
     signatureCanvas.setPointerCapture(event.pointerId);
     const point = signaturePoint(event);
@@ -697,22 +703,40 @@
     signatureContext?.moveTo(point.x, point.y);
   });
   signatureCanvas.addEventListener("pointermove", (event) => {
-    if (!signing) return;
+    if (!signing || event.pointerId !== signingPointerId) return;
     event.preventDefault();
     const point = signaturePoint(event);
     signatureContext?.lineTo(point.x, point.y);
     signatureContext?.stroke();
     state.signatureDrawn = true;
   });
-  const stopSigning = () => { signing = false; };
+  const stopSigning = (event) => {
+    if (event?.pointerId !== undefined && event.pointerId !== signingPointerId) return;
+    const pointerId = signingPointerId;
+    signing = false; signingPointerId = null;
+    document.body.classList.remove("signature-drawing");
+    if (pointerId !== null && signatureCanvas.hasPointerCapture(pointerId)) signatureCanvas.releasePointerCapture(pointerId);
+  };
   signatureCanvas.addEventListener("pointerup", stopSigning);
   signatureCanvas.addEventListener("pointercancel", stopSigning);
+  signatureCanvas.addEventListener("lostpointercapture", stopSigning);
+  window.addEventListener?.("blur", () => stopSigning());
+  window.addEventListener?.("resize", () => stopSigning());
+  const preventSignatureGesture = (event) => { if (event.cancelable) event.preventDefault(); };
+  signatureCanvas.addEventListener("touchstart", preventSignatureGesture, { passive: false });
+  signatureCanvas.addEventListener("contextmenu", preventSignatureGesture);
+  for (const name of ["touchstart", "touchmove", "gesturestart", "gesturechange", "selectstart"]) {
+    document.addEventListener?.(name, (event) => {
+      if (signingPointerId !== null) preventSignatureGesture(event);
+    }, { passive: false });
+  }
   $("clear-approval-signature").addEventListener("click", () => {
+    stopSigning();
     signatureContext?.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
     state.signatureDrawn = false;
   });
   document.addEventListener?.("visibilitychange", () => {
-    if (document.visibilityState === "hidden") clearTimeout(state.statusTimer);
+    if (document.visibilityState === "hidden") { stopSigning(); clearTimeout(state.statusTimer); }
     if (document.visibilityState === "visible" && state.tracking && !state.loading)
       void load();
   });

@@ -7,10 +7,10 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; img-src data:; base-uri 'none'; form-action 'self'">
   <title>Assinar documento | Assistência Simplificada</title>
-  <link rel="stylesheet" href="/assinar/page.css?v=13.1.5&amp;h=d8dd3495266b">
-  <script src="/assinar/config.js?v=13.1.5&amp;h=462fb1cd3dd5" defer></script>
-  <script src="/assinar/page.js?v=13.1.5&amp;h=2d0cbad37ef7" defer></script>
-  <link rel="stylesheet" href="/identity-tokens.css?v=13.1.5&amp;h=2133ecab5705">
+  <link rel="stylesheet" href="/assinar/page.css?v=13.1.6&amp;h=dae74d712e8b">
+  <script src="/assinar/config.js?v=13.1.6&amp;h=462fb1cd3dd5" defer></script>
+  <script src="/assinar/page.js?v=13.1.6&amp;h=6cb9066aba4a" defer></script>
+  <link rel="stylesheet" href="/identity-tokens.css?v=13.1.6&amp;h=2133ecab5705">
 </head>
 <body>
   <main class="shell">
@@ -27,7 +27,8 @@
       </div>
       <section class="card" aria-labelledby="terms-title">
         <h2 id="terms-title">Conteúdo apresentado pela loja</h2>
-        <p class="hint">Confira também o PDF enviado pela loja. Assine apenas se os dados e as condições estiverem corretos.</p>
+        <p class="hint" id="document-hint">Confira a via em PDF e assine apenas se os dados e as condições estiverem corretos.</p>
+        <a id="document-pdf" class="document-pdf" href="#" target="_blank" rel="noopener" hidden>Ver via em PDF antes de assinar</a>
         <pre id="disclosure"></pre>
       </section>
       <form id="signature-form" class="card">
@@ -35,7 +36,7 @@
         <p>Assine com o dedo ou mouse no espaço abaixo.</p>
         <canvas id="signature" width="720" height="300" aria-label="Área para desenhar a assinatura"></canvas>
         <button id="clear" type="button" class="secondary">Limpar assinatura</button>
-        <label class="accept"><input id="accept" type="checkbox" required> Recebi e conferi o PDF, li as condições acima e concordo em assinar este documento.</label>
+        <label class="accept"><input id="accept" type="checkbox" required> <span id="accept-text">Conferi a via em PDF, li as condições acima e concordo em assinar este documento.</span></label>
         <p id="submit-error" class="error-text" role="alert" hidden></p>
         <button id="submit" type="submit">Confirmar assinatura</button>
       </form>
