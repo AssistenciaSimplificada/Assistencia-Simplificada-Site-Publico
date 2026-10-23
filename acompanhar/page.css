@@ -421,6 +421,11 @@ button:focus-visible { outline: 3px solid var(--text); outline-offset: 4px; }
 .approval-feedback.success { color: #b8f4d2; background: rgba(65, 196, 123, .12); }
 .approval-feedback.error { color: #ffd0d5; background: rgba(235, 87, 99, .12); }
 .approval-footnote { display: block; margin-top: .9rem; color: var(--muted); line-height: 1.45; }
+.approval-whatsapp { display: grid; gap: .65rem; margin-top: 1rem; padding: 1rem; border: 1px solid #39aa7b; border-radius: .8rem; background: var(--surface, #17252b); }
+.approval-whatsapp[hidden] { display: none; }
+.approval-whatsapp p { margin: 0; }
+.approval-whatsapp a { display: block; padding: .9rem 1rem; border-radius: .6rem; background: #166549; color: #fff; font-weight: 800; text-align: center; text-decoration: none; }
+.approval-whatsapp small { color: var(--muted); }
 .approval-signature { display: grid; gap: .65rem; margin: 1rem 0; padding: 1rem; border: 1px solid rgba(255,255,255,.18); border-radius: .8rem; }
 .approval-signature:not(.is-fullscreen) { display: none; }
 .approval-signature-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .35rem 1rem; }

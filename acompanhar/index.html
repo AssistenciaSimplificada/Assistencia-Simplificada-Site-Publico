@@ -9,14 +9,14 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; base-uri 'none'; form-action 'self'">
   <title>Acompanhar atendimento | Assistência Simplificada</title>
   <link rel="canonical" href="https://assistenciasimplificada.site/a/">
-  <link rel="stylesheet" href="/acompanhar/page.css?v=13.1.6&amp;h=d65d18943dd7">
-  <link rel="stylesheet" href="/portal-design.css?v=13.1.6&amp;h=4971b6661b1e">
-  <script src="/portal-theme.js?v=13.1.6&amp;h=6e478d3b6583"></script>
-  <script src="/acompanhar/config.js?v=13.1.6&amp;h=f2b2ca1b29cc" defer></script>
-  <script src="/acompanhar/summary.js?v=13.1.6&amp;h=109b2a09b387" defer></script>
-  <script src="/acompanhar/page.js?v=13.1.6&amp;h=e755c22c9387" defer></script>
-  <link rel="stylesheet" href="/identity-tokens.css?v=13.1.6&amp;h=2133ecab5705">
-  <link rel="stylesheet" href="/acompanhar/summary.css?v=13.1.6&amp;h=38b811517bd6">
+  <link rel="stylesheet" href="/acompanhar/page.css?v=13.1.7&amp;h=f5dbdcc28d67">
+  <link rel="stylesheet" href="/portal-design.css?v=13.1.7&amp;h=4971b6661b1e">
+  <script src="/portal-theme.js?v=13.1.7&amp;h=6e478d3b6583"></script>
+  <script src="/acompanhar/config.js?v=13.1.7&amp;h=f2b2ca1b29cc" defer></script>
+  <script src="/acompanhar/summary.js?v=13.1.7&amp;h=109b2a09b387" defer></script>
+  <script src="/acompanhar/page.js?v=13.1.7&amp;h=15b6fea07e80" defer></script>
+  <link rel="stylesheet" href="/identity-tokens.css?v=13.1.7&amp;h=2133ecab5705">
+  <link rel="stylesheet" href="/acompanhar/summary.css?v=13.1.7&amp;h=38b811517bd6">
 </head>
 <body class="customer-portal">
   <main class="shell">
@@ -108,6 +108,11 @@
           </div>
         </section>
         <p id="approval-feedback" class="approval-feedback" role="status" hidden></p>
+        <div id="approval-whatsapp" class="approval-whatsapp" hidden>
+          <p>Sua aprovação já foi registrada. Avise também a loja pelo WhatsApp:</p>
+          <a id="approval-whatsapp-link" target="_blank" rel="noopener noreferrer">Avisar a loja: aprovei pelo link</a>
+          <small>A mensagem será preenchida. Confira e toque em Enviar no WhatsApp.</small>
+        </div>
         <div id="rejection-choice" class="rejection-choice" hidden>
           <label for="rejection-reason">Por que você não deseja aprovar?</label>
           <select id="rejection-reason">

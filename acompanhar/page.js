@@ -308,6 +308,15 @@
       $("revision-difference").textContent = `${sign}${money(Math.abs(revision.differenceCents))}`;
     }
     show("approval-card", approvalMode && snapshot.status === "Aguardando aprovação");
+    const storeDigits = String(snapshot.pickupDetails?.phone || "").replace(/\D/g, "");
+    const storeWhatsApp = /^\d{10,11}$/.test(storeDigits) && !/^0+$/.test(storeDigits) ? `55${storeDigits}` : /^55\d{10,11}$/.test(storeDigits) ? storeDigits : "";
+    const canNotifyApproval = approvalMode && approvalState === "approved" && Boolean(storeWhatsApp);
+    const approvalWhatsAppLink = $("approval-whatsapp-link");
+    if ($("approval-whatsapp")) show("approval-whatsapp", canNotifyApproval);
+    if (canNotifyApproval && approvalWhatsAppLink) {
+      const message = `Olá! Aprovei o serviço pelo link.\nAtendimento: ${String(tracking.publicNumber || "").slice(0, 80)}.\nAparelho: ${String(snapshot.deviceSummary || "meu aparelho").slice(0, 200)}.`;
+      approvalWhatsAppLink.href = `https://wa.me/${storeWhatsApp}?text=${encodeURIComponent(message)}`;
+    } else approvalWhatsAppLink?.removeAttribute("href");
     if (approvalMode) {
       const approvalCard = $("approval-card");
       const check = $("approval-check");
