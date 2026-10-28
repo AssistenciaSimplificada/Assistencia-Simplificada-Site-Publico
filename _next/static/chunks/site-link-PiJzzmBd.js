@@ -1,1 +1,0 @@
-import{r as e}from"./framework-DTZGTDtF.js?v=13.2.1";import{t}from"./link-BuTS-5j3.js?v=13.2.1";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

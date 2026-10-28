@@ -25,7 +25,7 @@
   };
   const TOKEN_PATTERN = /^(?:[A-Za-z0-9_-]{43}|[A-F0-9]{5}\.[A-Za-z0-9_-]{22})$/i;
   const statusIndex = (status) =>
-    status === "Aguardando técnico"
+    ["Aguardando técnico", "Garantia em análise"].includes(status)
       ? 2
       : status === "Aguardando aprovação"
         ? 3
@@ -53,6 +53,7 @@
         "Aguardando aprovação":
           "A assistência aguarda a confirmação do orçamento.",
         "Em manutenção": "O serviço aprovado está sendo realizado.",
+        "Garantia em análise": "A cobertura da garantia foi aceita. O aparelho está em análise na assistência.",
         "Garantia em reparo": "A garantia foi aprovada e o reparo está em andamento.",
         "Garantia pronta para retirada": "O reparo em garantia terminou. Combine a retirada do aparelho com a assistência.",
         "Pronto para retirada":
@@ -385,6 +386,7 @@
       "Aguardando técnico": "Próximo passo: a assistência confere a avaliação e informa o orçamento.",
       "Aguardando aprovação": "Sua ação: informe à loja se deseja aprovar o serviço.",
       "Em manutenção": "Próximo passo: aguarde a confirmação de que o aparelho está pronto.",
+      "Garantia em análise": "Próximo passo: a assistência avalia o reparo em garantia.",
       "Garantia em reparo": "Próximo passo: aguarde a conclusão do reparo em garantia.",
       "Garantia pronta para retirada": "Sua ação: combine a retirada do aparelho com a assistência.",
       "Pronto para retirada": "Sua ação: combine a retirada com a loja. A data de entrega ainda será registrada.",

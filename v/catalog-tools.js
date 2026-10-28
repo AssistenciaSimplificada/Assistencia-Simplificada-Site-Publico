@@ -34,10 +34,10 @@
   const effectivePricing = (item, now = Date.now()) => {
     if (Array.isArray(item.acceptedPaymentMethods) && Array.isArray(item.cashDiscountMethods)) {
       const methods = item.cashDiscountMethods.filter(method => ["Pix", "Dinheiro"].includes(method) && item.acceptedPaymentMethods.includes(method));
-      item = { ...item, cashDiscountMethods: methods, cashDiscountBasisPoints: methods.length ? item.cashDiscountBasisPoints : 0,
+      item = { ...item, cashDiscountMethods: methods, cashDiscountBasisPoints: methods.length ? item.cashDiscountBasisPoints : 0, cashDiscountAmountCents: methods.length ? item.cashDiscountAmountCents : 0,
         ...(!methods.length ? { cashPriceCents: Number(item.discountPriceCents || item.priceCents) } : {}) };
     }
-    if (!item.promotionStartsAt && !item.promotionEndsAt) return item;
+    if (!item.promotionStartsAt && !item.promotionEndsAt && item.cashDiscountMode !== "fixed") return item;
     const discount = Number(item.promotionPriceCents ?? item.discountPriceCents);
     const start = item.promotionStartsAt ? Date.parse(item.promotionStartsAt) : -Infinity;
     const end = item.promotionEndsAt ? Date.parse(item.promotionEndsAt) : Infinity;
@@ -47,8 +47,10 @@
       const totalCents = Math.round(base * (1 + Number(term.rateBasisPoints || 0) / 10000));
       return { ...term, totalCents, installmentCents: Math.ceil(totalCents / term.installments) };
     });
+    const calculateCashDiscount = window.AssistenciaShowcaseCashDiscount?.showcaseCashDiscountCents;
+    if (typeof calculateCashDiscount !== "function") throw new Error("pricing_module_unavailable");
     return { ...item, promotionPriceCents: discount || null, discountPriceCents: active ? discount : null,
-      cashPriceCents: Math.max(1, Math.round(base * (1 - Number(item.cashDiscountBasisPoints || 0) / 10000))),
+    cashPriceCents: Math.max(1, base - calculateCashDiscount(item, base)),
       interestInstallments: terms, interestInstallment: terms.at(-1) || null };
   };
   const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });

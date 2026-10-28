@@ -168,9 +168,13 @@
     if (saving) return;
     const changes = reviewedChanges;
     if (!changes.length) return;
+    const validateCashDiscount = window.AssistenciaShowcaseCashDiscount?.showcaseCashDiscountError;
+    if (typeof validateCashDiscount !== "function") return notify("Não foi possível carregar a verificação dos descontos. Confira a conexão e recarregue esta página antes de salvar. Suas alterações continuam na tela.", true);
     for (const item of changes) {
       if (!Number.isInteger(item.priceCents) || item.priceCents <= 0) return notify(`Informe um preço válido para ${item.title}.`, true);
       if (item.discountPriceCents != null && (!Number.isInteger(item.discountPriceCents) || item.discountPriceCents <= 0 || item.discountPriceCents >= item.priceCents)) return notify(`O preço promocional de ${item.title} deve ser menor que o normal.`, true);
+      const cashError = validateCashDiscount(item, item.priceCents, item.discountPriceCents);
+      if (cashError) return notify(`${item.title}: ${cashError}`, true);
       if (!Number.isInteger(item.interestFreeInstallments) || item.interestFreeInstallments < 1 || item.interestFreeInstallments > item.paymentMaximumInstallments || !Number.isInteger(item.interestMaxInstallments) || item.interestMaxInstallments < item.interestFreeInstallments || item.interestMaxInstallments > item.paymentMaximumInstallments || (item.interestMaxInstallments > item.interestFreeInstallments && !item.availableWithInterest.includes(item.interestMaxInstallments))) return notify(`Revise o parcelamento de ${item.title}.`, true);
     }
     // Reserve the tab during the click so mobile browsers can open WhatsApp
@@ -221,7 +225,7 @@
         }
       }
     } catch (error) {
-      document.querySelector("#price-review-error").textContent = error.message === "catalog_conflict" ? "Outro usuário alterou estes dados. Seus valores foram preservados; reabra o link para conferir a versão atual." : "Não foi possível confirmar a gravação. Os valores continuam aqui para conferência.";
+      document.querySelector("#price-review-error").textContent = error.message === "invalid_cash_discount" ? "O preço informado deixa o desconto fixo acima de 30%. Ajuste o preço ou peça à loja para revisar o desconto em reais." : error.message === "catalog_conflict" ? "Outro usuário alterou estes dados. Seus valores foram preservados; reabra o link para conferir a versão atual." : "Não foi possível confirmar a gravação. Os valores continuam aqui para conferência.";
       notify(error.message === "catalog_conflict" ? "Este aparelho foi alterado em outra sessão. Suas alterações continuam na tela; reabra o link para conferir os valores atuais antes de salvar." : error.message === "editor_expired" ? "Este acesso venceu." : "Não foi possível salvar agora. Tente novamente.", true);
       if (error.message === "catalog_conflict") clearTimeout(notify.timer);
     }
