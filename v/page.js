@@ -83,6 +83,10 @@
     if (!catalog) return;
     const now = promotionNow();
     const boundaries = catalog.items.flatMap(item => [item, ...(item.variants || [])]).flatMap(item => [item.promotionStartsAt, item.promotionEndsAt]).filter(Boolean).map(Date.parse).filter(value => value > now);
+    if (catalog.monthlySales?.month) {
+      const [year, month] = new Intl.DateTimeFormat("sv-SE", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit"}).format(now).split("-").map(Number);
+      boundaries.push(Date.UTC(year,month,1,3));
+    }
     if (boundaries.length) promotionTimer = setTimeout(refreshPromotions, Math.min(2147483647, Math.max(1, Math.min(...boundaries) - now + 30)));
   };
   const refreshPromotions = () => {
@@ -95,8 +99,8 @@
       render();
       if (variant) detailNode.querySelector(`.variant-picker button[data-variant="${CSS.escape(variant)}"]`)?.click();
       const shell = detailNode.querySelector(".detail-shell"); if (shell) shell.scrollTop = scroll;
-      renderBestSeller();
     }
+    renderBestSeller();
     schedulePromotions();
   };
   let activePhotoViewer = null;
@@ -328,11 +332,34 @@
   };
   const card = item => `<article class="card ${item.featured ? "featured" : ""} ${item.availability === "unavailable" ? "unavailable" : ""}" data-code="${esc(item.code)}" tabindex="0"><div class="picture"><img loading="lazy" decoding="async" src="${imageUrl(item.imageUrls[0])}" alt="${esc(item.title)}"></div><div class="content"><div class="tags"><span>📱 ${esc(displayCondition(item.purchaseKind))}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.storage ? `<span>💾 ${esc(formatCapacity(item.storage))}</span>` : ""}${item.availability !== "unavailable" && Number(item.stockQuantity || 1) > 1 ? `<span>📦 ${item.stockQuantity} unidades</span>` : ""}${item.batteryHealth ? `<span>🔋 ${esc(formatBattery(item.batteryHealth))}</span>` : ""}</div><h2>${esc(item.title)}</h2><p>${item.color ? `🎨 ${esc(item.color)}` : ""}${item.color && item.condition && item.condition !== item.purchaseKind ? " • " : ""}${item.condition && item.condition !== item.purchaseKind ? esc(item.condition) : ""}</p>${item.availability === "order" ? `<small class="order-lead">🚚 Prazo: ${esc(item.orderLeadTime || "consulte a loja")}</small>` : ""}<div class="card-payment">${cardPaymentHtml(item)}</div></div></article>`;
   function renderBestSeller() {
+    const month = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(promotionNow());
+    const summary = catalog.monthlySales?.month === month ? catalog.monthlySales : null;
+    const winner = (Array.isArray(summary?.models) ? summary.models : []).filter(entry => Number.isSafeInteger(entry.salesCount) && entry.salesCount > 0 && entry.model)
+      .sort((a, b) => b.salesCount - a.salesCount || `${a.brand}|${a.model}`.localeCompare(`${b.brand}|${b.model}`, "en"))[0];
+    if (winner) {
+      const modelIdentity = (brand, model) => {
+        let key = variantModel(brand, model);
+        if (["moto", "motorola"].includes(variantPart(brand))) {
+          const moto = /^(?:moto\s*)?(?:g\s*)?(\d{1,3})(?:\s*4g)?$/.exec(key);
+          if (moto) key = `g${moto[1]}`;
+        }
+        return `${variantPart(brand) === "moto" ? "motorola" : variantPart(brand)}|${key}`;
+      };
+      const identity = modelIdentity(winner.brand, winner.model);
+      const available = catalog.items.filter(entry => entry.availability !== "unavailable" && modelIdentity(entry.brand, entry.model) === identity)
+        .sort((a, b) => availabilityRank(a) - availabilityRank(b) || cashPrice(a) - cashPrice(b))[0];
+      const title = variantPart(winner.model).startsWith(`${variantPart(winner.brand)} `) ? winner.model : [winner.brand, winner.model].filter(Boolean).join(" ");
+      const contact = storeWhatsAppUrl(`Olá! Gostaria de consultar a disponibilidade do ${title}, o aparelho mais vendido neste mês.`);
+      bestSellerNode.hidden = false;
+      bestSellerNode.innerHTML = `<div class="best-thumb">${available?.imageUrls?.[0] ? `<img src="${imageUrl(available.imageUrls[0])}" alt="">` : '<span class="best-device-icon" aria-hidden="true">📱</span>'}</div><div class="best-copy"><small>MAIS VENDIDO DO MÊS</small><strong>${esc(title)}</strong><span>${winner.salesCount} ${winner.salesCount === 1 ? "vendido" : "vendidos"} no mês · ${available ? availabilityLabel(available) : "Consulte a disponibilidade"}</span></div><div class="best-price">${available ? `<small>A partir de</small><strong>${money(cashPrice(available))}</strong>` : '<small>Sem anúncio disponível</small>'}</div>${available ? '<button type="button">Ver aparelho</button>' : contact ? `<a class="best-contact" href="${esc(contact)}" target="_blank" rel="noopener noreferrer">Consultar na loja</a>` : ""}`;
+      if (available) bestSellerNode.querySelector("button").addEventListener("click", () => navigateItem(available));
+      return;
+    }
     const item = catalog.items.filter(entry => entry.availability !== "unavailable").sort((a,b) => Number(b.featured)-Number(a.featured) || Number(b.salesCount || 0)-Number(a.salesCount || 0))[0];
     if (!item) { bestSellerNode.hidden = true; return; }
-    const hasSales = Number(item.salesCount || 0) > 0;
+    const hasSales = false; // Legacy lifetime counts cannot substantiate a monthly best seller.
     bestSellerNode.hidden = false;
-    bestSellerNode.innerHTML = `<div class="best-thumb"><img src="${imageUrl(item.imageUrls[0])}" alt=""></div><div class="best-copy"><small>${hasSales ? "MAIS VENDIDO DA LOJA" : "DESTAQUE DA LOJA"}</small><strong>${esc(item.title)}</strong><span>${item.availability === "order" ? "🚚" : "✓"} ${availabilityLabel(item)} • 📱 ${esc(displayCondition(item.purchaseKind))}${item.storage ? ` • 💾 ${esc(formatCapacity(item.storage))}` : ""}${item.color ? ` • 🎨 ${esc(item.color)}` : ""}</span></div><div class="best-price"><small>A partir de</small><strong>${money(cashPrice(item))}</strong></div><button type="button" data-code="${esc(item.code)}">Ver aparelho</button>`;
+    bestSellerNode.innerHTML = `<div class="best-thumb"><img src="${imageUrl(item.imageUrls[0])}" alt=""></div><div class="best-copy"><small>DESTAQUE DA LOJA</small><strong>${esc(item.title)}</strong><span>${item.availability === "order" ? "🚚" : "✓"} ${availabilityLabel(item)} • 📱 ${esc(displayCondition(item.purchaseKind))}${item.storage ? ` • 💾 ${esc(formatCapacity(item.storage))}` : ""}${item.color ? ` • 🎨 ${esc(item.color)}` : ""}</span></div><div class="best-price"><small>A partir de</small><strong>${money(cashPrice(item))}</strong></div><button type="button" data-code="${esc(item.code)}">Ver aparelho</button>`;
     bestSellerNode.querySelector("button").addEventListener("click", () => navigateItem(item));
   }
   const bindCards = () => {
@@ -361,7 +388,7 @@
     const restoreCard = !detailNode.hidden;
     closeDeviceHelper();
     closePhotoViewer();
-    detailNode.hidden = true; document.body.classList.remove("detail-open"); catalogNode.hidden = false; bestSellerNode.hidden = !catalog.items.length; document.querySelector(".toolbar").hidden = false;
+    detailNode.hidden = true; document.body.classList.remove("detail-open"); catalogNode.hidden = false; renderBestSeller(); document.querySelector(".toolbar").hidden = false;
     const items = filtered(); const availableCount = items.filter(item => item.availability !== "unavailable").reduce((sum,item) => sum + Number(item.stockQuantity || 1), 0); const unavailableCount = items.filter(item => item.availability === "unavailable").length; statusNode.textContent = `${availableCount} aparelho${availableCount === 1 ? "" : "s"} ${availableCount === 1 ? "disponível" : "disponíveis"}${unavailableCount ? ` · ${unavailableCount} ${unavailableCount === 1 ? "indisponível" : "indisponíveis"}` : ""}`;
     const newItems = items.filter(item => item.purchaseKind !== "Usado");
     const usedItems = items.filter(item => item.purchaseKind === "Usado");

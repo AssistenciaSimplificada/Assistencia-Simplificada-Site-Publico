@@ -171,6 +171,8 @@ main{padding-bottom:24px}
 .card .card-price,.card .installment-line{font-size:.76rem;line-height:1.4}
 .card .payment-methods{font-size:.67rem;line-height:1.5}
 .best-seller{border-left:4px solid var(--store-primary);padding:16px 20px;box-shadow:none}
+.best-device-icon{font-size:2.3rem}.best-contact{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:7px;background:var(--blue);color:#fff;text-decoration:none;font-weight:750;text-align:center}
+@media(max-width:760px){.best-contact{grid-column:1/-1;width:100%}}
 .store-banner img{height:auto;aspect-ratio:5/1;object-fit:contain}
 .detail-shell{padding:28px;border-radius:16px}.detail-layout{gap:32px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .detail .picture{height:430px;background:#fafbfd}.detail h1{font-size:clamp(1.5rem,2.5vw,2rem);line-height:1.25;overflow-wrap:anywhere}
