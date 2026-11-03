@@ -2,7 +2,8 @@
   "use strict";
   window.addEventListener("hashchange", () => location.reload());
   const apiUrl = window.__ASSISTENCIA_COMMERCE_SIGNATURE_CONFIG__?.apiUrl;
-  const token = location.hash.slice(1);
+  const [token, contactQuery = ""] = location.hash.slice(1).split("?");
+  const storePhone = new URLSearchParams(contactQuery).get("loja") || "";
   const $ = (id) => document.getElementById(id);
   const show = (id, visible) => { $(id).hidden = !visible; };
   const fail = (message) => { show("loading", false); show("document", false); show("success", false); $("error-text").textContent = message; show("error", true); };
@@ -10,7 +11,7 @@
     fail("Este endereço está incompleto. Solicite um novo link à loja.");
     return;
   }
-  history.replaceState(null, "", location.pathname + location.search + "#" + token);
+  history.replaceState(null, "", location.pathname + location.search + location.hash);
   window.addEventListener("beforeunload", event => { if (!completed && (submitting || drawn)) { event.preventDefault(); event.returnValue = ""; } });
   const canvas = $("signature");
   const ctx = canvas.getContext("2d");
@@ -118,6 +119,11 @@
       await request("sign", { accepted: true, signature: canvas.toDataURL("image/png") });
       completed = true;
       show("document", false); show("success", true);
+      if (/^55\d{10,11}$/.test(storePhone)) {
+        const contact = $("notify-store");
+        contact.href = `https://wa.me/${storePhone}?text=${encodeURIComponent(`Acabei de assinar o documento ${$("public-number").textContent}. Por favor, confirme o recebimento e envie minha via.`)}`;
+        show("notify-store", true);
+      }
     } catch (error) {
       $("submit-error").textContent = error instanceof Error ? error.message : "Não foi possível assinar.";
       show("submit-error", true);
