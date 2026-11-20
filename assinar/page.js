@@ -6,7 +6,7 @@
   const storePhone = new URLSearchParams(contactQuery).get("loja") || "";
   const $ = (id) => document.getElementById(id);
   const show = (id, visible) => { $(id).hidden = !visible; };
-  const fail = (message) => { show("loading", false); show("document", false); show("success", false); $("error-text").textContent = message; show("error", true); };
+  const fail = (message, retryable = false) => { show("loading", false); show("document", false); show("success", false); $("error-text").textContent = message; show("retry", retryable); show("error", true); };
   if (!apiUrl || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
     fail("Este endereço está incompleto. Solicite um novo link à loja.");
     return;
@@ -20,6 +20,7 @@
   let drawing = false;
   let activePointerId = null;
   let drawn = false;
+  let loadingDocument = false;
   let documentPdfUrl = "";
   const showDocumentPdf = (dataUrl) => {
     const match = /^data:application\/pdf;base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(dataUrl || ""));
@@ -83,17 +84,35 @@
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch(apiUrl, { method: "POST", mode: "cors", cache: "no-store",
+        credentials: "omit", redirect: "error",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, token, ...extra }), signal: controller.signal });
-      const body = await response.json();
-      if (!response.ok) throw new Error(response.status === 410
-        ? "Este link expirou ou já foi utilizado. Solicite um novo link à loja."
-        : "Não foi possível acessar o serviço de assinatura. Tente novamente.");
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw Object.assign(new Error([404, 410].includes(response.status)
+        ? "Este link expirou ou já foi utilizado. Confirme com a loja se sua assinatura foi recebida antes de solicitar outro link."
+        : "Não foi possível acessar o serviço de assinatura. Tente novamente ou consulte a loja."),
+        { retryable: response.status >= 500 || response.status === 408 || response.status === 429 });
+      if (!body || typeof body !== "object" || Array.isArray(body) || action === "read" &&
+          (typeof body.publicNumber !== "string" || !body.publicNumber.trim() || !Number.isFinite(Date.parse(body.expiresAt))))
+        throw Object.assign(new Error("A assistência não respondeu como esperado. Tente novamente; nenhum envio foi confirmado."), { retryable: true });
       if (action === "sign" && body?.accepted !== true) throw new Error("Não foi possível confirmar o recebimento da assinatura. Seu desenho foi mantido; tente novamente ou consulte a loja.");
       return body;
+    } catch (error) {
+      if (controller.signal.aborted || error instanceof TypeError) {
+        throw Object.assign(new Error(action === "sign"
+          ? "O envio não foi confirmado. Seu desenho e a confirmação de leitura foram mantidos. Confira sua conexão e tente novamente ou confirme o recebimento com a loja."
+          : "Não foi possível conectar à assistência. Confira sua conexão e tente novamente. Isso não significa que o link expirou."), { retryable: true });
+      }
+      throw error;
     } finally { clearTimeout(timeout); }
   }
-  request("read").then((data) => {
+  async function loadDocument() {
+    if (loadingDocument || submitting || completed) return;
+    loadingDocument = true;
+    $("retry").disabled = true;
+    show("error", false); show("loading", true);
+    try {
+    const data = await request("read");
     $("public-number").textContent = data.publicNumber || "Documento";
     $("device-label").textContent = data.deviceLabel || "";
     $("signer-name").textContent = data.signerName || "";
@@ -104,7 +123,11 @@
       $("accept-text").textContent = "Recebi e conferi o PDF enviado pela loja, li as condições acima e concordo em assinar este documento.";
     }
     show("loading", false); show("document", true);
-  }).catch((error) => fail(error instanceof Error ? error.message : "Não foi possível abrir este link. Verifique sua conexão ou solicite um novo à loja."));
+    } catch (error) { fail(error instanceof Error ? error.message : "Não foi possível abrir este link. Verifique sua conexão ou solicite um novo à loja.", error?.retryable === true); }
+    finally { loadingDocument = false; $("retry").disabled = false; }
+  }
+  $("retry").addEventListener("click", () => void loadDocument());
+  void loadDocument();
   $("signature-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     if (submitting || completed) return;
@@ -115,6 +138,7 @@
     submitting = true;
     $("signature-form").inert = true;
     $("submit").disabled = true;
+    $("submit").textContent = "Enviando assinatura…";
     try {
       await request("sign", { accepted: true, signature: canvas.toDataURL("image/png") });
       completed = true;
@@ -127,6 +151,6 @@
     } catch (error) {
       $("submit-error").textContent = error instanceof Error ? error.message : "Não foi possível assinar.";
       show("submit-error", true);
-    } finally { submitting = false; $("signature-form").inert = false; $("submit").disabled = completed; }
+    } finally { submitting = false; $("signature-form").inert = false; $("submit").disabled = completed; $("submit").textContent = "Confirmar assinatura"; }
   });
 })();

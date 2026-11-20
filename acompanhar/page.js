@@ -3,7 +3,7 @@
   const API_URL = window.__ASSISTENCIA_CUSTOMER_CONFIG__?.apiUrl;
   if (!API_URL) throw new Error("A configuração pública não foi carregada.");
   const $ = (id) => document.getElementById(id);
-  const state = { token: "", reviewCookie: "", reviewClickedInPage: false, pin: "", tracking: null, timer: null, expiryTimer: null, statusTimer: null, loading: false, approving: false, signatureDrawn: false, signatureMode: "disabled" };
+  const state = { token: "", reviewCookie: "", reviewClickedInPage: false, pin: "", tracking: null, timer: null, expiryTimer: null, statusTimer: null, loading: false, readRevision: 0, approving: false, signatureDrawn: false, signatureMode: "disabled" };
   const googleReviewUrl = (value) => {
     try {
       const url = new URL(String(value || ""));
@@ -561,9 +561,12 @@
   const load = async () => {
     if (state.loading || state.approving) return;
     state.loading = true;
+    const revision = state.readRevision;
     try {
-      render(await api());
+      const tracking = await api();
+      if (revision === state.readRevision) render(tracking);
     } catch (error) {
+      if (revision !== state.readRevision) return;
       if (error.code === "pin_required") {
         show("error", false);
         show("loading", false);
@@ -636,6 +639,8 @@
       return;
     }
     state.approving = true;
+    // A read started before this decision cannot replace its confirmation.
+    state.readRevision++;
     $("approve-quote").disabled = true;
     $("reject-quote").disabled = true;
     $("approval-feedback").hidden = false;

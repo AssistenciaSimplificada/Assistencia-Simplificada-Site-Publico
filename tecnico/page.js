@@ -48,7 +48,9 @@
   };
   const cents = (value) => {
     const raw = String(value).trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
-    if (!/^\d+(?:[.,]\d+)*$/.test(raw)) return null;
+    // Accept decimal point/comma and correctly grouped Brazilian thousands;
+    // malformed grouping must never silently become a different amount.
+    if (!/^(?:(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?|\d+\.\d{1,2})$/.test(raw)) return null;
     const separator = Math.max(raw.lastIndexOf(","), raw.lastIndexOf("."));
     let whole = raw;
     let fraction = "";

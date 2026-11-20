@@ -7,16 +7,16 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; img-src data:; base-uri 'none'; form-action 'self'">
   <title>Assinar documento | Assistência Simplificada</title>
-  <link rel="stylesheet" href="/assinar/page.css?v=13.2.5&amp;h=dae74d712e8b">
-  <script src="/assinar/config.js?v=13.2.5&amp;h=462fb1cd3dd5" defer></script>
-  <script src="/assinar/page.js?v=13.2.5&amp;h=ed5d15cec84a" defer></script>
-  <link rel="stylesheet" href="/identity-tokens.css?v=13.2.5&amp;h=2133ecab5705">
+  <link rel="stylesheet" href="/assinar/page.css?v=13.2.6&amp;h=dae74d712e8b">
+  <script src="/assinar/config.js?v=13.2.6&amp;h=462fb1cd3dd5" defer></script>
+  <script src="/assinar/page.js?v=13.2.6&amp;h=ce7482cf4c28" defer></script>
+  <link rel="stylesheet" href="/identity-tokens.css?v=13.2.6&amp;h=2133ecab5705">
 </head>
 <body>
   <main class="shell">
     <header><strong>Assistência Simplificada</strong><span>Assinatura de documento</span></header>
     <section id="loading" class="card" role="status"><h1>Consultando o documento…</h1></section>
-    <section id="error" class="card" hidden role="alert"><h1>Não foi possível assinar</h1><p id="error-text"></p></section>
+    <section id="error" class="card" hidden role="alert"><h1>Não foi possível abrir o documento</h1><p id="error-text"></p><button id="retry" type="button" hidden>Tentar novamente</button></section>
     <article id="document" hidden>
       <div class="card summary">
         <span class="eyebrow">CONFIRA ANTES DE ASSINAR</span>
