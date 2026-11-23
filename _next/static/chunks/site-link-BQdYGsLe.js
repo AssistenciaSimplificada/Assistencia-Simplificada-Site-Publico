@@ -1,1 +1,0 @@
-import{r as e}from"./framework-Bs6x4_Sf.js?v=13.2.7";import{t}from"./link-BARER35L.js?v=13.2.7";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};
