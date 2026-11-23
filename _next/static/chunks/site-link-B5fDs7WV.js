@@ -1,1 +1,0 @@
-import{r as e}from"./framework-Bs6x4_Sf.js?v=13.2.6";import{t}from"./link-CVBvO4QU.js?v=13.2.6";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

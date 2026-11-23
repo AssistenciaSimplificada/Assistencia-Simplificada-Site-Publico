@@ -59,6 +59,42 @@
     return before && (before.priceCents !== item.priceCents || before.discountPriceCents !== item.discountPriceCents || before.promotionStartsAt !== item.promotionStartsAt || before.promotionEndsAt !== item.promotionEndsAt || before.interestFreeInstallments !== item.interestFreeInstallments || before.interestMaxInstallments !== item.interestMaxInstallments);
   };
   const originalValues = item => ({ priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, promotionStartsAt:item.promotionStartsAt || null, promotionEndsAt:item.promotionEndsAt || null, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments, updatedAt:item.updatedAt });
+  const groupPriceRows = records => {
+    const byCode = new Map();
+    for (const record of records) {
+      if (!record?.code) continue;
+      const previous = byCode.get(record.code);
+      if (!previous || String(record.updatedAt) >= String(previous.updatedAt)) byCode.set(record.code, record);
+    }
+    const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+    const identityOf = record => {
+      const brand = normalize(record.brand);
+      let model = normalize(record.model);
+      if (brand && model.startsWith(brand + " ")) model = model.slice(brand.length + 1);
+      if (brand === "samsung" && model.startsWith("galaxy ")) model = model.slice(7);
+      return [brand, model, normalize(record.deviceType), normalize(record.storage), normalize(record.ram)];
+    };
+    const currentStock = new Set([...byCode.values()].filter(record => record.purchaseKind === "Novo" && !record.catalogOnly && record.availability === "ready").map(record => JSON.stringify(identityOf(record))));
+    const groups = new Map();
+    for (const record of byCode.values()) {
+      const { updatedAt, ...prices } = originalValues(record);
+      const identity = identityOf(record);
+      if (record.catalogOnly && record.purchaseKind === "Novo" && identity[0] && identity[1] && currentStock.has(JSON.stringify(identity))) continue;
+      // Older servers omit identity. Merge only records with a confirmed model and identical terms.
+      const key = record.purchaseKind === "Novo" && identity[0] && identity[1] && !record.catalogOnly && record.availability === "ready"
+        ? JSON.stringify([identity, prices, record.paymentMaximumInstallments, record.availableWithInterest,
+          record.cashDiscountMode, record.cashDiscountBasisPoints, record.cashDiscountAmountCents, record.cashDiscountMethods])
+        : record.code;
+      const member = { code: record.code, updatedAt };
+      const group = groups.get(key);
+      if (group) { group.members.push(member); if (record.color) group.colors.add(record.color); }
+      else groups.set(key, { ...record, members: [member], colors: new Set(record.color ? [record.color] : []) });
+    }
+    return [...groups.values()];
+  };
+  const rowDetails = item => [item.purchaseKind, [item.storage, item.ram].filter(Boolean).join(" / "),
+    [...item.colors].join(", "), item.members.length > 1 ? `${item.members.length} unidades` : "",
+    item.availability === "order" ? "Sob encomenda" : item.availability === "unavailable" ? "Indisponível" : "Pronta entrega"].filter(Boolean).join(" · ");
   const updateCount = (item) => {
     if (item) {
       if (changed(item)) changedCodes.add(item.code);
@@ -75,7 +111,7 @@
       const freeOptions = Array.from({ length:item.paymentMaximumInstallments }, (_, index) => index + 1).map(count => `<option value="${count}" ${count === item.interestFreeInstallments ? "selected" : ""}>Até ${count}x sem juros</option>`).join("");
       const paidOptions = [item.interestFreeInstallments, ...item.availableWithInterest.filter(count => count > item.interestFreeInstallments)].map(count => `<option value="${count}" ${count === item.interestMaxInstallments ? "selected" : ""}>${count === item.interestFreeInstallments ? "Não oferecer com juros" : `Até ${count}x com juros`}</option>`).join("");
       const draft = priceDrafts.get(item.code) || {};
-      return `<article class="device-row ${changed(item) ? "changed" : ""}" data-code="${esc(item.code)}"><img src="${esc(imageUrl(item.imageUrl))}" alt="" loading="lazy" decoding="async" width="64" height="64"><div class="device-info"><strong>${esc(item.title)}</strong><span>${esc(item.purchaseKind)} · ${item.availability === "order" ? "Sob encomenda" : item.availability === "unavailable" ? "Indisponível" : "Pronta entrega"}</span></div><label class="price-field">Preço normal<div class="price-input"><span>R$</span><input data-field="priceCents" inputmode="decimal" value="${esc(draft.priceCents ?? moneyInput(item.priceCents))}"></div></label><label class="price-field">Preço promocional<div class="price-input"><span>R$</span><input data-field="discountPriceCents" inputmode="decimal" value="${esc(draft.discountPriceCents ?? moneyInput(item.discountPriceCents))}" placeholder="Sem promoção"></div></label><div class="installment-fields"><label class="price-field">Parcelamento sem juros<select data-field="interestFreeInstallments">${freeOptions}</select></label><label class="price-field">Limite com juros<select data-field="interestMaxInstallments">${paidOptions}</select></label></div></article>`;
+      return `<article class="device-row ${changed(item) ? "changed" : ""}" data-code="${esc(item.code)}"><img src="${esc(imageUrl(item.imageUrl))}" alt="" loading="lazy" decoding="async" width="64" height="64"><div class="device-info"><strong>${esc(item.title)}</strong><span>${esc(rowDetails(item))}</span></div><label class="price-field">Preço normal<div class="price-input"><span>R$</span><input data-field="priceCents" inputmode="decimal" value="${esc(draft.priceCents ?? moneyInput(item.priceCents))}"></div></label><label class="price-field">Preço promocional<div class="price-input"><span>R$</span><input data-field="discountPriceCents" inputmode="decimal" value="${esc(draft.discountPriceCents ?? moneyInput(item.discountPriceCents))}" placeholder="Sem promoção"></div></label><div class="installment-fields"><label class="price-field">Parcelamento sem juros<select data-field="interestFreeInstallments">${freeOptions}</select></label><label class="price-field">Limite com juros<select data-field="interestMaxInstallments">${paidOptions}</select></label></div></article>`;
     }).join("") + (filtered.length > visibleLimit ? `<div class="more-items"><span>Mostrando ${visibleLimit} de ${filtered.length} aparelhos</span><button id="more-items" type="button">Mostrar mais ${Math.min(PAGE_SIZE, filtered.length - visibleLimit)}</button></div>` : "") : '<div class="empty">Nenhum aparelho encontrado.</div>';
     itemsNode.querySelector("#more-items")?.addEventListener("click", () => { visibleLimit += PAGE_SIZE;render(); });
     itemsNode.querySelectorAll(".device-row").forEach(row => {
@@ -113,7 +149,7 @@
   };
   const open = async () => {
     const body = await request("/price-editor/session", { storeCode, token, pin });
-    items = (body.items || []).map(item => ({
+    items = groupPriceRows(body.items.filter(item => item && typeof item.code === "string").map(item => ({
       ...item,
       promotionStartsAt: item.promotionStartsAt || null,
       promotionEndsAt: item.promotionEndsAt || null,
@@ -121,7 +157,7 @@
       interestMaxInstallments: Number(item.interestMaxInstallments) || Number(item.maxInstallments) || Number(item.interestFreeInstallments) || 1,
       paymentMaximumInstallments: Number(item.paymentMaximumInstallments) || Number(item.maxInstallments) || Number(item.interestFreeInstallments) || 1,
       availableWithInterest: Array.isArray(item.availableWithInterest) ? item.availableWithInterest.map(Number).filter(Number.isInteger) : [],
-    }));
+    })));
     original = new Map(items.map(item => [item.code, originalValues(item)]));
     itemsByCode = new Map(items.map(item => [item.code, item]));
     changedCodes.clear();priceDrafts.clear();visibleLimit = PAGE_SIZE;
@@ -197,13 +233,23 @@
     searchNode.disabled = true;
     saveNode.disabled = true; saveNode.textContent = "Salvando...";
     try {
-      const result = await request("/price-editor/update", { storeCode, token, pin, changes:changes.map(item => ({ itemCode:item.code, expectedUpdatedAt:original.get(item.code)?.updatedAt, priceCents:item.priceCents, discountPriceCents:item.discountPriceCents, promotionStartsAt:item.promotionStartsAt, promotionEndsAt:item.promotionEndsAt, interestFreeInstallments:item.interestFreeInstallments, interestMaxInstallments:item.interestMaxInstallments })) });
+      const updates = changes.flatMap(item => item.members.map(member => ({
+        itemCode: member.code, expectedUpdatedAt: member.updatedAt, priceCents: item.priceCents,
+        discountPriceCents: item.discountPriceCents, promotionStartsAt: item.promotionStartsAt,
+        promotionEndsAt: item.promotionEndsAt, interestFreeInstallments: item.interestFreeInstallments,
+        interestMaxInstallments: item.interestMaxInstallments,
+      })));
+      const result = await request("/price-editor/update", { storeCode, token, pin, changes: updates });
+      const revisions = new Map(result.items?.map(entry => [entry.itemCode, entry.updatedAt]));
       for (const item of changes) {
-        const revision = result.items?.find(entry => entry.itemCode === item.code)?.updatedAt || result.updatedAt || item.updatedAt;
+        const revision = revisions.get(item.code) || result.updatedAt || item.updatedAt;
         original.set(item.code, originalValues({ ...item, updatedAt:revision }));
         changedCodes.delete(item.code);priceDrafts.delete(item.code);
         const current = itemsByCode.get(item.code);
-        if (current) current.updatedAt = revision;
+        if (current) {
+          current.updatedAt = revision;
+          current.members = item.members.map(member => ({ ...member, updatedAt: revisions.get(member.code) || revision }));
+        }
       }
       reviewNode.close(); editor.inert = false;
       render(); notify(`${result.updated} aparelho${result.updated === 1 ? " atualizado" : "s atualizados"} com sucesso.`);
@@ -245,7 +291,7 @@
     const fields = [["Preço normal", item => currency(item.priceCents)], ["Promoção", item => currency(item.discountPriceCents)], ["Validade · Brasília", validity], ["Sem juros", item => `Até ${item.interestFreeInstallments}x`], ["Limite com juros", item => item.interestMaxInstallments > item.interestFreeInstallments ? `Até ${item.interestMaxInstallments}x` : "Não oferecido"]];
     document.querySelector("#price-review-items").innerHTML = `<p>${changes.length} aparelho(s) com alterações. Confira os valores anteriores e os novos.</p>${changes.map(item => {
       const before = original.get(item.code), difference = item.priceCents - before.priceCents;
-      return `<article><h3>${esc(item.title)}</h3><div class="review-columns"><span>Condição</span><strong>Anterior</strong><strong>Novo</strong></div>${fields.map(([label, value]) => `<div class="review-columns ${value(before) !== value(item) ? "review-changed" : ""}"><span>${label}</span><span>${esc(value(before))}</span><strong>${esc(value(item))}</strong></div>`).join("")}<small>Diferença no preço normal: ${difference > 0 ? "+" : ""}${currency(difference)}</small></article>`;
+      return `<article><h3>${esc(item.title)}</h3><small>${esc(rowDetails(item))}</small><div class="review-columns"><span>Condição</span><strong>Anterior</strong><strong>Novo</strong></div>${fields.map(([label, value]) => `<div class="review-columns ${value(before) !== value(item) ? "review-changed" : ""}"><span>${label}</span><span>${esc(value(before))}</span><strong>${esc(value(item))}</strong></div>`).join("")}<small>Diferença no preço normal: ${difference > 0 ? "+" : ""}${currency(difference)}</small></article>`;
     }).join("")}`;
     document.querySelector("#price-review-error").textContent = "";
     clearTimeout(searchTimer); editor.inert = true; reviewNode.showModal(); reviewBack.focus();

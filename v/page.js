@@ -125,9 +125,20 @@
   const percent = basisPoints => `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits:2 }).format(Number(basisPoints || 0) / 100)}%`;
   const esc = value => String(value || "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
   const productDescription = value => {
-    const lines = String(value || "Consulte a loja para mais informações.").split(/\n+/).map(line => line.trim()).filter(Boolean);
+    const description = String(value || "").trim() || "Consulte a loja para mais informações.";
+    const lineEnd = description.indexOf("\n", 350);
+    const wordEnd = description.lastIndexOf(" ", 420);
+    let boundary = lineEnd >= 350 && lineEnd <= 480 ? lineEnd : wordEnd > 100 ? wordEnd : 420;
+    if ((description.slice(0, boundary).match(/\*\*/g)?.length || 0) % 2) {
+      const end = description.indexOf("**", boundary);
+      if (end >= 0) boundary = end + 2;
+    }
+    const expanded = description.length > 480 && boundary < description.length - 40;
+    const preview = expanded ? description.slice(0, boundary) : description;
+    const remaining = expanded ? description.slice(boundary) : "";
     const emphasis = line => esc(line).replace(/\*\*([^*\n]{1,160})\*\*/g, "<strong>$1</strong>");
-    return `<section class="product-description" aria-label="Descrição do aparelho"><h2>Descrição do aparelho</h2><div class="product-description-content">${lines.map(line => line.startsWith("- ") ? `<p class="description-point"><span aria-hidden="true">✓</span><span>${emphasis(line.slice(2))}</span></p>` : `<p>${emphasis(line)}</p>`).join("")}</div></section>`;
+    const renderLines = text => text.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => line.startsWith("- ") ? `<p class="description-point"><span aria-hidden="true">✓</span><span>${emphasis(line.slice(2))}</span></p>` : `<p>${emphasis(line)}</p>`).join("");
+    return `<section class="product-description" aria-label="Descrição do aparelho"><h2>Descrição do aparelho</h2><div class="product-description-content">${renderLines(preview)}</div>${remaining ? `<details class="product-description-more"><summary>Ler mais</summary><div class="product-description-content">${renderLines(remaining)}</div></details>` : ""}</section>`;
   };
   const imageUrl = value => String(value || "").startsWith("/v/") ? String(value) : `${API}${String(value || "").startsWith("/") ? value : `/${value}`}`;
   const rgb = hex => [1,3,5].map(index => Number.parseInt(hex.slice(index,index + 2),16));
@@ -315,6 +326,10 @@
   }
   const acceptsCredit = item => item.acceptedPaymentMethods?.includes("Cartão de crédito") === true;
   const acceptsCard = item => acceptsCredit(item) || item.acceptedPaymentMethods?.includes("Cartão de débito") === true;
+  const offersPayJoy = item => item.purchaseKind === "Novo" && item.payJoyEnabled !== false && item.availability !== "unavailable";
+  const payJoyBasePrice = item => offersPayJoy(item)
+    ? `<small class="payjoy-base">Valor base para PayJoy: ${money(salePrice(item))}. Total após simulação.</small>`
+    : "";
   const paymentMethods = item => (Array.isArray(item.acceptedPaymentMethods) ? item.acceptedPaymentMethods : []).join(" • ");
   const installmentOptions = item => {
     const base = salePrice(item);
@@ -331,33 +346,51 @@
     return `${item.discountPriceCents || cashOffer ? `<div class="offer-heading"><small class="previous-price">${money(item.priceCents)}</small>${offerPercent(item) ? `<span class="offer-badge">-${offerPercent(item)}%</span>` : ""}</div>` : ""}<div class="price">${money(cashPrice(item))}</div>${cashOffer ? `<strong class="cash-offer">✨ ${cashDiscountLabel(item)} no ${esc((item.cashDiscountMethods || []).join(" e ") || "pagamento à vista")}</strong>` : ""}${acceptsCard(item) ? `<span class="card-price">💳 ${money(base)} no cartão</span>` : ""}${acceptsCredit(item) ? `<span class="installment-line">Até ${free}x de ${money(Math.ceil(base/free))} sem juros</span>` : ""}${acceptsCredit(item) && item.interestInstallment ? `<span class="installment-line muted">Ou ${item.interestInstallment.installments}x de ${money(item.interestInstallment.installmentCents)} com juros</span>` : ""}${paymentMethods(item) ? `<small class="payment-methods">${esc(paymentMethods(item))}</small>` : ""}`;
   };
   const card = item => `<article class="card ${item.featured ? "featured" : ""} ${item.availability === "unavailable" ? "unavailable" : ""}" data-code="${esc(item.code)}" tabindex="0"><div class="picture"><img loading="lazy" decoding="async" src="${imageUrl(item.imageUrls[0])}" alt="${esc(item.title)}"></div><div class="content"><div class="tags"><span>📱 ${esc(displayCondition(item.purchaseKind))}</span><span class="availability-tag ${item.availability === "order" ? "order" : item.availability === "unavailable" ? "unavailable" : "ready"}">${availabilityIcon(item)} ${availabilityLabel(item)}</span>${item.storage ? `<span>💾 ${esc(formatCapacity(item.storage))}</span>` : ""}${item.availability !== "unavailable" && Number(item.stockQuantity || 1) > 1 ? `<span>📦 ${item.stockQuantity} unidades</span>` : ""}${item.batteryHealth ? `<span>🔋 ${esc(formatBattery(item.batteryHealth))}</span>` : ""}</div><h2>${esc(item.title)}</h2><p>${item.color ? `🎨 ${esc(item.color)}` : ""}${item.color && item.condition && item.condition !== item.purchaseKind ? " • " : ""}${item.condition && item.condition !== item.purchaseKind ? esc(item.condition) : ""}</p>${item.availability === "order" ? `<small class="order-lead">🚚 Prazo: ${esc(item.orderLeadTime || "consulte a loja")}</small>` : ""}<div class="card-payment">${cardPaymentHtml(item)}</div></div></article>`;
+  const bestSellerModelIdentity = (brand, model) => {
+    let key = variantModel(brand, model);
+    if (["moto", "motorola"].includes(variantPart(brand))) {
+      const moto = /^(?:moto\s*)?(?:g\s*)?(\d{1,3})(?:\s*4g)?$/.exec(key);
+      if (moto) key = `g${moto[1]}`;
+    }
+    return `${variantPart(brand) === "moto" ? "motorola" : variantPart(brand)}|${key}`;
+  };
+  const bestSellerAvailable = winner => catalog.items.filter(entry => entry.purchaseKind === "Novo" && entry.availability !== "unavailable"
+    && bestSellerModelIdentity(entry.brand, entry.model) === bestSellerModelIdentity(winner.brand, winner.model))
+    .sort((a, b) => availabilityRank(a) - availabilityRank(b) || cashPrice(a) - cashPrice(b))[0];
+  const bestSellerTitle = winner => variantPart(winner.model).startsWith(`${variantPart(winner.brand)} `) ? winner.model : [winner.brand, winner.model].filter(Boolean).join(" ");
+  const bestSellerWinner = models => (Array.isArray(models) ? models : []).filter(entry => Number.isSafeInteger(entry.salesCount) && entry.salesCount > 0 && entry.model)
+    .sort((a, b) => b.salesCount - a.salesCount || `${a.brand}|${a.model}`.localeCompare(`${b.brand}|${b.model}`, "en"))[0];
+  function showBestSellerHistory(summary) {
+    const dialog = document.querySelector("#best-seller-history");
+    const content = document.querySelector("#best-seller-history-content");
+    const winner = bestSellerWinner(summary.historyModels);
+    if (!winner) {
+      content.innerHTML = "<p>O histórico de vendas ainda não está disponível. Consulte a loja.</p>";
+    } else {
+      const available = bestSellerAvailable(winner), title = bestSellerTitle(winner);
+      const contact = storeWhatsAppUrl(`Olá! Gostaria de consultar a disponibilidade do ${title}, o aparelho novo mais vendido da loja.`);
+      content.innerHTML = `<h3>${esc(title)}</h3><p><strong>${winner.salesCount} ${winner.salesCount === 1 ? "vendido" : "vendidos"} em todo o histórico</strong></p><p>${available ? `${availabilityLabel(available)} · A partir de ${money(cashPrice(available))}` : "Consulte a disponibilidade"}</p>${available ? '<button type="button" class="best-history-view">Ver aparelho</button>' : contact ? `<a class="contact" href="${esc(contact)}" target="_blank" rel="noopener noreferrer">Consultar na loja</a>` : ""}`;
+      content.querySelector(".best-history-view")?.addEventListener("click", () => { dialog.close(); navigateItem(available); });
+    }
+    dialog.querySelector("header button").onclick = () => dialog.close();
+    if (!dialog.open) dialog.showModal();
+  }
   function renderBestSeller() {
     const month = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(promotionNow());
-    const summary = catalog.monthlySales?.month === month ? catalog.monthlySales : null;
-    const winner = (Array.isArray(summary?.models) ? summary.models : []).filter(entry => Number.isSafeInteger(entry.salesCount) && entry.salesCount > 0 && entry.model)
-      .sort((a, b) => b.salesCount - a.salesCount || `${a.brand}|${a.model}`.localeCompare(`${b.brand}|${b.model}`, "en"))[0];
+    const summary = catalog.monthlySales?.month === month && catalog.monthlySales.purchaseKind === "Novo" ? catalog.monthlySales : null;
+    const winner = bestSellerWinner(summary?.models);
     if (winner) {
-      const modelIdentity = (brand, model) => {
-        let key = variantModel(brand, model);
-        if (["moto", "motorola"].includes(variantPart(brand))) {
-          const moto = /^(?:moto\s*)?(?:g\s*)?(\d{1,3})(?:\s*4g)?$/.exec(key);
-          if (moto) key = `g${moto[1]}`;
-        }
-        return `${variantPart(brand) === "moto" ? "motorola" : variantPart(brand)}|${key}`;
-      };
-      const identity = modelIdentity(winner.brand, winner.model);
-      const available = catalog.items.filter(entry => entry.availability !== "unavailable" && modelIdentity(entry.brand, entry.model) === identity)
-        .sort((a, b) => availabilityRank(a) - availabilityRank(b) || cashPrice(a) - cashPrice(b))[0];
-      const title = variantPart(winner.model).startsWith(`${variantPart(winner.brand)} `) ? winner.model : [winner.brand, winner.model].filter(Boolean).join(" ");
+      const available = bestSellerAvailable(winner);
+      const title = bestSellerTitle(winner);
       const contact = storeWhatsAppUrl(`Olá! Gostaria de consultar a disponibilidade do ${title}, o aparelho mais vendido neste mês.`);
       bestSellerNode.hidden = false;
-      bestSellerNode.innerHTML = `<div class="best-thumb">${available?.imageUrls?.[0] ? `<img src="${imageUrl(available.imageUrls[0])}" alt="">` : '<span class="best-device-icon" aria-hidden="true">📱</span>'}</div><div class="best-copy"><small>MAIS VENDIDO DO MÊS</small><strong>${esc(title)}</strong><span>${winner.salesCount} ${winner.salesCount === 1 ? "vendido" : "vendidos"} no mês · ${available ? availabilityLabel(available) : "Consulte a disponibilidade"}</span></div><div class="best-price">${available ? `<small>A partir de</small><strong>${money(cashPrice(available))}</strong>` : '<small>Sem anúncio disponível</small>'}</div>${available ? '<button type="button">Ver aparelho</button>' : contact ? `<a class="best-contact" href="${esc(contact)}" target="_blank" rel="noopener noreferrer">Consultar na loja</a>` : ""}`;
-      if (available) bestSellerNode.querySelector("button").addEventListener("click", () => navigateItem(available));
+      bestSellerNode.innerHTML = `<button type="button" class="best-history" aria-label="Ver mais vendido da loja"><span class="best-thumb">${available?.imageUrls?.[0] ? `<img src="${imageUrl(available.imageUrls[0])}" alt="">` : '<span class="best-device-icon" aria-hidden="true">📱</span>'}</span><span class="best-copy"><small>MAIS VENDIDO DO MÊS · NOVOS</small><strong>${esc(title)}</strong><span>${winner.salesCount} ${winner.salesCount === 1 ? "vendido" : "vendidos"} no mês · ${available ? availabilityLabel(available) : "Consulte a disponibilidade"}</span><span class="best-history-hint">Ver mais vendido da loja</span></span></button><div class="best-price">${available ? `<small>A partir de</small><strong>${money(cashPrice(available))}</strong>` : '<small>Sem anúncio disponível</small>'}</div>${available ? '<button class="best-view" type="button">Ver aparelho</button>' : contact ? `<a class="best-contact" href="${esc(contact)}" target="_blank" rel="noopener noreferrer">Consultar na loja</a>` : ""}`;
+      bestSellerNode.querySelector(".best-history").addEventListener("click", () => showBestSellerHistory(summary));
+      if (available) bestSellerNode.querySelector(".best-view").addEventListener("click", () => navigateItem(available));
       return;
     }
-    const item = catalog.items.filter(entry => entry.availability !== "unavailable").sort((a,b) => Number(b.featured)-Number(a.featured) || Number(b.salesCount || 0)-Number(a.salesCount || 0))[0];
+    const item = catalog.items.filter(entry => entry.purchaseKind === "Novo" && entry.availability !== "unavailable").sort((a,b) => Number(b.featured)-Number(a.featured) || Number(b.salesCount || 0)-Number(a.salesCount || 0))[0];
     if (!item) { bestSellerNode.hidden = true; return; }
-    const hasSales = false; // Legacy lifetime counts cannot substantiate a monthly best seller.
     bestSellerNode.hidden = false;
     bestSellerNode.innerHTML = `<div class="best-thumb"><img src="${imageUrl(item.imageUrls[0])}" alt=""></div><div class="best-copy"><small>DESTAQUE DA LOJA</small><strong>${esc(item.title)}</strong><span>${item.availability === "order" ? "🚚" : "✓"} ${availabilityLabel(item)} • 📱 ${esc(displayCondition(item.purchaseKind))}${item.storage ? ` • 💾 ${esc(formatCapacity(item.storage))}` : ""}${item.color ? ` • 🎨 ${esc(item.color)}` : ""}</span></div><div class="best-price"><small>A partir de</small><strong>${money(cashPrice(item))}</strong></div><button type="button" data-code="${esc(item.code)}">Ver aparelho</button>`;
     bestSellerNode.querySelector("button").addEventListener("click", () => navigateItem(item));
@@ -398,7 +431,7 @@
     const byCode = new Map(items.map(item => [String(item.code), item]));
     catalogNode.querySelectorAll(".card").forEach(node => {
       const item = byCode.get(node.dataset.code);
-      if (item?.purchaseKind === "Novo" && item.payJoyEnabled !== false) node.querySelector(".card-payment")?.insertAdjacentHTML("beforeend", '<small class="payjo-card-note">🧾 Boleto parcelado via PayJoy · consulte condições</small>');
+      if (item && offersPayJoy(item)) node.querySelector(".card-payment")?.insertAdjacentHTML("beforeend", `<small class="payjo-card-note">🧾 Boleto parcelado via PayJoy</small>${payJoyBasePrice(item)}`);
     });
     bindCards();
     window.assistenciaDiscovery?.decorate();
@@ -447,9 +480,9 @@
     if (item.availability === "unavailable") {
       detailNode.querySelector(".detail-shell").classList.add("unavailable");
     }
-    if (item.purchaseKind === "Novo" && item.payJoyEnabled !== false) {
+    if (offersPayJoy(item)) {
       const anchor = detailNode.querySelector(".payment-box") || detailNode.querySelector(".detail-pricebox");
-      anchor.insertAdjacentHTML("afterend", '<section class="payjo-box"><strong>🧾 Parcelamento no boleto via PayJoy</strong><span>Disponível para aparelhos novos. Consulte prazos e condições diretamente com a loja.</span></section>');
+      anchor.insertAdjacentHTML("afterend", `<section class="payjo-box"><strong>🧾 Parcelamento no boleto via PayJoy</strong>${payJoyBasePrice(item)}<span>Consulte prazos e condições com a loja.</span></section>`);
     }
     const terms = item.acceptedPaymentMethods?.includes("Cartão de crédito") ? installmentOptions(item) : [];
     if (terms.length > 1) {
