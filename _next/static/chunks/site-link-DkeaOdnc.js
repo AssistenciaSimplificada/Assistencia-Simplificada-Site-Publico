@@ -1,0 +1,1 @@
+import{r as e}from"./framework-Bs6x4_Sf.js?v=13.2.8";import{t}from"./link-CaFflRA_.js?v=13.2.8";var n=e();function r(e){return(0,n.jsx)(t,{...e,prefetch:!1})}export{r as t};

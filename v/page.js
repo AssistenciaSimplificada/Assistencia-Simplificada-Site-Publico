@@ -398,8 +398,13 @@
   const bindCards = () => {
     const byCode = new Map(catalog.items.map(item => [String(item.code), item]));
     document.querySelectorAll(".card").forEach(node => {
-    const open = () => navigateItem(byCode.get(node.dataset.code));
-    node.addEventListener("click", open); node.addEventListener("keydown", event => { if (event.key === "Enter") open(); });
+      const open = () => navigateItem(byCode.get(node.dataset.code));
+      node.addEventListener("click", open);
+      node.addEventListener("keydown", event => {
+        if (event.target !== node || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        if (!event.repeat) open();
+      });
     });
   };
   const searchText = new WeakMap();
