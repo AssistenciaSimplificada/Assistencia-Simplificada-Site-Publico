@@ -209,7 +209,7 @@
     for (const item of changes) {
       if (!Number.isInteger(item.priceCents) || item.priceCents <= 0) return notify(`Informe um preço válido para ${item.title}.`, true);
       if (item.discountPriceCents != null && (!Number.isInteger(item.discountPriceCents) || item.discountPriceCents <= 0 || item.discountPriceCents >= item.priceCents)) return notify(`O preço promocional de ${item.title} deve ser menor que o normal.`, true);
-      const cashError = validateCashDiscount(item, item.priceCents, item.discountPriceCents);
+      const cashError = validateCashDiscount(item, item.priceCents, Array.isArray(item.promotionPaymentMethods) ? null : item.discountPriceCents);
       if (cashError) return notify(`${item.title}: ${cashError}`, true);
       if (!Number.isInteger(item.interestFreeInstallments) || item.interestFreeInstallments < 1 || item.interestFreeInstallments > item.paymentMaximumInstallments || !Number.isInteger(item.interestMaxInstallments) || item.interestMaxInstallments < item.interestFreeInstallments || item.interestMaxInstallments > item.paymentMaximumInstallments || (item.interestMaxInstallments > item.interestFreeInstallments && !item.availableWithInterest.includes(item.interestMaxInstallments))) return notify(`Revise o parcelamento de ${item.title}.`, true);
     }

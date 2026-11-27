@@ -26,5 +26,31 @@ function showcaseCashDiscountError(value, priceCents, promotionPriceCents = null
   return null;
 }
 
-window.AssistenciaShowcaseCashDiscount = { normalizeShowcaseCashDiscount, showcaseCashDiscountCents, showcaseCashDiscountError };
+function normalizeShowcasePaymentOptions(value = {}) {
+  const methods = ["Pix", "Dinheiro", "Cartão de débito", "Cartão de crédito", "PayJoy"];
+  const configured = Array.isArray(value?.promotionPaymentMethods) ? value.promotionPaymentMethods : ["Pix", "Dinheiro"];
+  const base = value?.payJoyBasePriceCents;
+  return {
+    promotionPaymentMethods: methods.filter(method => configured.includes(method)),
+    payJoyMode: value?.payJoyMode === "disabled" ? "disabled" : "store",
+    payJoyBasePriceCents: Number.isSafeInteger(base) && base > 0 && base <= 1_000_000_000 ? base : null,
+  };
+}
+
+function showcaseMethodPrices(value, regularPrice, activePromotion, payJoyAvailable = false) {
+  const options = normalizeShowcasePaymentOptions(value);
+  const accepted = Array.isArray(value.acceptedPaymentMethods) ? value.acceptedPaymentMethods : ["Pix", "Dinheiro", "Cartão de débito", "Cartão de crédito"];
+  const cashMethods = Array.isArray(value.cashDiscountMethods) ? value.cashDiscountMethods : ["Pix", "Dinheiro"];
+  const methods = ["Pix", "Dinheiro", "Cartão de débito", "Cartão de crédito"].filter(method => accepted.includes(method));
+  if (payJoyAvailable && options.payJoyMode !== "disabled") methods.push("PayJoy");
+  return methods.map(method => {
+    const regular = method === "PayJoy" ? options.payJoyBasePriceCents ?? regularPrice : regularPrice;
+    const promoted = Boolean(activePromotion && activePromotion < regular && options.promotionPaymentMethods.includes(method));
+    const cash = (method === "Pix" || method === "Dinheiro") && !activePromotion && cashMethods.includes(method);
+    const priceCents = promoted ? activePromotion : regular - (cash ? showcaseCashDiscountCents(value, regular) : 0);
+    return { method, priceCents, promoted };
+  });
+}
+
+window.AssistenciaShowcaseCashDiscount = { normalizeShowcaseCashDiscount, showcaseCashDiscountCents, showcaseCashDiscountError, normalizeShowcasePaymentOptions, showcaseMethodPrices };
 })();

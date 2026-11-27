@@ -7,10 +7,10 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://sqfnxcpjgzjtxuccbeci.supabase.co; img-src data:; base-uri 'none'; form-action 'self'">
   <title>Assinar documento | Assistência Simplificada</title>
-  <link rel="stylesheet" href="/assinar/page.css?v=13.2.8&amp;h=dae74d712e8b">
-  <script src="/assinar/config.js?v=13.2.8&amp;h=462fb1cd3dd5" defer></script>
-  <script src="/assinar/page.js?v=13.2.8&amp;h=ce7482cf4c28" defer></script>
-  <link rel="stylesheet" href="/identity-tokens.css?v=13.2.8&amp;h=2133ecab5705">
+  <link rel="stylesheet" href="/assinar/page.css?v=13.2.9&amp;h=dae74d712e8b">
+  <script src="/assinar/config.js?v=13.2.9&amp;h=462fb1cd3dd5" defer></script>
+  <script src="/assinar/page.js?v=13.2.9&amp;h=ce7482cf4c28" defer></script>
+  <link rel="stylesheet" href="/identity-tokens.css?v=13.2.9&amp;h=2133ecab5705">
 </head>
 <body>
   <main class="shell">
@@ -36,7 +36,7 @@
         <p>Assine com o dedo ou mouse no espaço abaixo.</p>
         <canvas id="signature" width="720" height="300" aria-label="Área para desenhar a assinatura"></canvas>
         <button id="clear" type="button" class="secondary">Limpar assinatura</button>
-        <label class="accept"><input id="accept" type="checkbox" required> <span id="accept-text">Conferi a via em PDF, li as condições acima e concordo em assinar este documento.</span></label>
+        <label class="accept"><input id="accept" type="checkbox" required> <span id="accept-text">Conferi a via em PDF, li as condições acima e concordo em assinar este documento.</span><span aria-hidden="true">*</span></label>
         <p id="submit-error" class="error-text" role="alert" hidden></p>
         <button id="submit" type="submit">Confirmar assinatura</button>
       </form>

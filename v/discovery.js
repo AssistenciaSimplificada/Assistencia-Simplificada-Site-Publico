@@ -14,7 +14,7 @@
   const money = cents => new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"}).format(Number(cents || 0)/100);
   const capacity = value => /^\d+$/.test(String(value || "").trim()) ? `${String(value).trim()} GB` : String(value || "Não informado");
   const capacityInGb = value => window.assistenciaCatalogTools.capacityInGb(value);
-  const price = item => Number((Number(item.cashDiscountBasisPoints || 0) > 0 ? item.cashPriceCents : 0) || item.discountPriceCents || item.priceCents || 0);
+  const price = item => item.methodPrices ? Number(item.cashPriceCents || item.priceCents) : Number((Number(item.cashDiscountBasisPoints || 0) > 0 ? item.cashPriceCents : 0) || item.discountPriceCents || item.priceCents || 0);
   const key = () => `assistencia:favoritos:${context.catalog.storeCode}`;
   const notify = message => { $("#discovery-feedback").textContent = message; };
   const selectedItems = codes => context.catalog.items.filter(item => codes.has(item.code));

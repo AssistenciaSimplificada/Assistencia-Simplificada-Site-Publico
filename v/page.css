@@ -234,3 +234,5 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 .product-description-more summary { cursor: pointer; color: var(--blue); font-weight: 700; }
 .product-description-more .product-description-content { margin-top: 10px; }
 .payjoy-base { color: var(--muted); font-size: .76rem; line-height: 1.4; }
+
+.card-payment .method-price { display: block; font-size: .8rem; line-height: 1.35; }
